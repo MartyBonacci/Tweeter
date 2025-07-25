@@ -1,0 +1,1 @@
+Please refer to the AI_CONFIG.md file for instructions on how to interact with this project.
