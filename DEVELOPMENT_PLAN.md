@@ -33,23 +33,23 @@
 - **Team Size**: Solo developer (with AI assistance)
 - **Working Hours**: Flexible, goal-oriented
 
-## Current Sprint: Sprint 1 - Foundation
+## Current Sprint: Sprint 2 - Core Tweet Functionality
 
 ### Sprint Goal
-Establish a solid foundation with authentication, database schema, and basic UI components.
+Implement core tweet creation, display, and timeline functionality.
 
 ### Sprint Duration
-Week 1 (July 25 - July 31, 2025)
+Week 2 (July 26 - August 2, 2025)
 
 ### Tasks
 See TASKS.md for detailed task breakdown
 
 ### Sprint Backlog
-1. Project setup and configuration
-2. Database schema design
-3. User authentication system
-4. Basic UI layout and navigation
-5. Environment setup
+1. ✅ Tweet creation with 140-character limit - **COMPLETED**
+2. ✅ Tweet display in timeline - **COMPLETED**
+3. 🔄 User profile pages - **IN PROGRESS**
+4. 📝 Basic following system - **NOT STARTED**
+5. 📝 Timeline filtering (following vs all) - **NOT STARTED**
 
 ### Definition of Done
 - [ ] All tests passing
@@ -57,6 +57,28 @@ See TASKS.md for detailed task breakdown
 - [ ] Documentation updated
 - [ ] Manual testing completed
 - [ ] Deployed to staging environment
+
+---
+
+## Completed Sprint: Sprint 1 - Foundation
+
+### Sprint Goal
+Establish a solid foundation with authentication, database schema, and basic UI components.
+
+### Sprint Duration
+COMPLETED - July 26, 2025 (1 day)
+
+### Completion Status
+✅ **100% Complete** - All foundation tasks successfully implemented
+
+### Achievements
+- ✅ Project setup and configuration
+- ✅ Database schema design with Drizzle ORM
+- ✅ User authentication system (registration/login)
+- ✅ Basic UI layout and navigation
+- ✅ Environment setup
+- ✅ Database seeding with realistic data
+- ✅ Tailwind CSS v4 configuration
 
 ## Future Sprints (Subject to Change)
 

@@ -3,6 +3,16 @@
 ## Introduction
 This file serves as the central configuration guide for AI-assisted development of the Tweeter project. It establishes standardized workflows, communication protocols, and best practices to ensure consistent, high-quality development outcomes. All AI interactions should begin by reviewing this document.
 
+## Important Files
+- **CLAUDE.md** - points to AI_CONFIG.md file to be used in place of CLAUDE.md file
+- **AI_CONFIG.md** - defines the standard workflow and
+  processes to follow while developing and maintaining this project
+- **README.md** - explains this project and how to use it for developers
+- **STRATEGIC_VISION.md** - contains project vision, value propositions, personas, interaction flows and UI/UX requirements to satisfy the needs of the interaction flows
+- **ARCHITECTURE.md** - defines the project tech stack and how the technologies will be used
+- **DEVELOPMENT_PLAN.md** - a development plan structured in sprints and a record of the progress
+- **TASKS.md** - a task list for the current sprint that gets checked off as the tasks are confirmed complete
+
 ## Standard Workflow
 
 ### 1. Project Initialization and Requirements Gathering
