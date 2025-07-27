@@ -7,6 +7,7 @@ interface User {
 
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const updateUser = () => {
@@ -26,6 +27,7 @@ export function useUser() {
       } else {
         setUser(null);
       }
+      setIsLoading(false);
     };
 
     updateUser();
@@ -42,5 +44,5 @@ export function useUser() {
     };
   }, []);
 
-  return user;
+  return { user, isLoading };
 }

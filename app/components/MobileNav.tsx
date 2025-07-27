@@ -3,7 +3,7 @@ import { useUser } from '../hooks/useUser';
 
 export default function MobileNav() {
   const location = useLocation();
-  const currentUser = useUser();
+  const { user: currentUser } = useUser();
 
   const isActive = (path: string) => location.pathname === path;
 

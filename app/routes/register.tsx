@@ -3,8 +3,7 @@ import { data, redirect } from 'react-router';
 import { db } from '../db/drizzle';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { hashPassword, generateToken } from '../lib/auth.server';
 
 export async function action({ request }: { request: Request }) {
   const formData = await request.formData();
@@ -41,7 +40,7 @@ export async function action({ request }: { request: Request }) {
       return data({ error: 'Email already registered' }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hashPassword(password);
 
     const [newUser] = await db.insert(users).values({
       username,
@@ -50,11 +49,10 @@ export async function action({ request }: { request: Request }) {
       display_name: displayName || username,
     }).returning();
 
-    const token = jwt.sign(
-      { userId: newUser.id, username: newUser.username },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
+    const token = generateToken({
+      userId: newUser.id,
+      username: newUser.username
+    });
 
     return data({
       user: {

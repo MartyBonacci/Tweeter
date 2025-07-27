@@ -27,6 +27,9 @@ type Pages = {
       "username": string;
     };
   };
+  "/settings": {
+    params: {};
+  };
   "/api/tweets": {
     params: {};
   };
@@ -59,7 +62,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/home" | "/users/:username" | "/api/tweets" | "/api/tweets/create" | "/api/users/:username" | "/api/users/:username/follow" | "/api/tweets/:tweetId/like" | "/api/auth/login" | "/api/auth/register";
+    page: "/" | "/login" | "/register" | "/home" | "/users/:username" | "/settings" | "/api/tweets" | "/api/tweets/create" | "/api/users/:username" | "/api/users/:username/follow" | "/api/tweets/:tweetId/like" | "/api/auth/login" | "/api/auth/register";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -80,6 +83,10 @@ type RouteFiles = {
   "routes/users.$username.tsx": {
     id: "routes/users.$username";
     page: "/users/:username";
+  };
+  "routes/settings.tsx": {
+    id: "routes/settings";
+    page: "/settings";
   };
   "routes/api.tweets.api.tsx": {
     id: "routes/api.tweets.api";

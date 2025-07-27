@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { users, tweets, follows, likes } from '../app/db/schema';
-import bcrypt from 'bcrypt';
+import { hashPassword } from '../app/lib/auth.server';
 import { v4 as uuidv4 } from 'uuid';
 import * as schema from '../app/db/schema';
 
@@ -78,7 +78,7 @@ async function seed() {
     console.log('👤 Creating users...');
     const createdUsers = [];
     for (const userData of seedUsers) {
-      const hashedPassword = await bcrypt.hash('password123', 10);
+      const hashedPassword = await hashPassword('password123');
       const [user] = await db.insert(users).values({
         username: userData.username,
         email: userData.email,

@@ -7,17 +7,17 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 
 export default function Home() {
-  const user = useUser();
+  const { user, isLoading } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) {
+    if (!isLoading && !user) {
       const token = localStorage.getItem('token');
       if (!token) {
         navigate('/login');
       }
     }
-  }, [user, navigate]);
+  }, [user, isLoading, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50">

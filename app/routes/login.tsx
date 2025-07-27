@@ -3,8 +3,7 @@ import { data, redirect } from 'react-router';
 import { db } from '../db/drizzle';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { verifyPassword, generateToken } from '../lib/auth.server';
 
 export async function action({ request }: { request: Request }) {
   const formData = await request.formData();
@@ -22,17 +21,16 @@ export async function action({ request }: { request: Request }) {
       return data({ error: 'Invalid username or password' }, { status: 401 });
     }
 
-    const isValid = await bcrypt.compare(password, user[0].password_hash);
+    const isValid = await verifyPassword(password, user[0].password_hash);
     
     if (!isValid) {
       return data({ error: 'Invalid username or password' }, { status: 401 });
     }
 
-    const token = jwt.sign(
-      { userId: user[0].id, username: user[0].username },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
+    const token = generateToken({
+      userId: user[0].id,
+      username: user[0].username
+    });
 
     return data({
       user: {

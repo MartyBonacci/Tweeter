@@ -40,7 +40,7 @@ interface UserProfileData {
 
 export default function UserProfile() {
   const data = useLoaderData() as UserProfileData;
-  const currentUser = useUser();
+  const { user: currentUser } = useUser();
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [followerCount, setFollowerCount] = useState(data.followersCount);
@@ -162,9 +162,12 @@ export default function UserProfile() {
                       </div>
                     )}
                     {currentUser?.username === data.user.username ? (
-                      <button className="ml-auto bg-white border border-gray-300 text-gray-900 px-4 py-1 rounded-full font-medium hover:bg-gray-50">
+                      <Link
+                        to="/settings"
+                        className="ml-auto bg-white border border-gray-300 text-gray-900 px-4 py-1 rounded-full font-medium hover:bg-gray-50"
+                      >
                         Edit profile
-                      </button>
+                      </Link>
                     ) : currentUser ? (
                       <button
                         onClick={handleFollow}

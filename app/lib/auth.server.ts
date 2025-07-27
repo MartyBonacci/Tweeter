@@ -1,8 +1,11 @@
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-here';
 const JWT_EXPIRES_IN = '24h';
+
+const scryptAsync = promisify(scrypt);
 
 export interface JWTPayload {
   userId: string;
@@ -10,11 +13,16 @@ export interface JWTPayload {
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+  const salt = randomBytes(16).toString('hex');
+  const derivedKey = await scryptAsync(password, salt, 64) as Buffer;
+  return salt + ':' + derivedKey.toString('hex');
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+  const [salt, key] = hash.split(':');
+  const keyBuffer = Buffer.from(key, 'hex');
+  const derivedKey = await scryptAsync(password, salt, 64) as Buffer;
+  return timingSafeEqual(keyBuffer, derivedKey);
 }
 
 export function generateToken(payload: JWTPayload): string {

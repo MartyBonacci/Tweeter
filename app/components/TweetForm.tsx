@@ -5,7 +5,7 @@ export function TweetForm() {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const user = useUser();
+  const { user } = useUser();
   
   const charCount = content.length;
   const isOverLimit = charCount > 140;

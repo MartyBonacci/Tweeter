@@ -22,6 +22,10 @@ export default [
     file: "routes/users.$username.tsx",
   },
   {
+    path: "/settings",
+    file: "routes/settings.tsx",
+  },
+  {
     path: "/api/tweets",
     file: "routes/api.tweets.api.tsx",
   },

@@ -17,6 +17,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
         username: users.username,
         displayName: users.display_name,
         bio: users.bio,
+        avatar: users.avatar_url,
         createdAt: users.created_at,
       })
       .from(users)
