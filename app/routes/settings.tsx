@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Form, useActionData, useLoaderData, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
+import { useNavigate, useActionData, useLoaderData, useFetcher, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import MobileNav from '../components/MobileNav';
 import { useUser } from '../hooks/useUser';
-import { requireAuth } from '../lib/middleware';
+import { verifyToken } from '../lib/auth.server';
 import { db } from '../db/drizzle';
 import { users } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -26,7 +26,7 @@ export default function Settings() {
   const { user: initialData } = useLoaderData() as { user: UserData };
   const { user, isLoading: isAuthLoading } = useUser();
   const navigate = useNavigate();
-  const actionData = useActionData() as { error?: string; success?: boolean };
+  const fetcher = useFetcher();
   
   const [userData, setUserData] = useState<UserData>({
     username: '',
@@ -34,8 +34,12 @@ export default function Settings() {
     bio: '',
     avatar: ''
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
+  
+  const isLoading = fetcher.state === 'submitting';
+  const actionData = fetcher.data as { error?: string; success?: boolean };
+  const error = actionData?.error || null;
+  const success = actionData?.success || false;
 
   useEffect(() => {
     // Only redirect after auth loading is complete
@@ -84,6 +88,30 @@ export default function Settings() {
     fetchUserData();
   }, [user, navigate]);
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    // Store token in a cookie or use client action
+    const formData = new FormData();
+    formData.append('displayName', userData.displayName);
+    formData.append('username', userData.username);
+    formData.append('bio', userData.bio || '');
+    formData.append('avatar', userData.avatar || '');
+    formData.append('token', token); // Pass token as form field
+
+    fetcher.submit(formData, {
+      method: 'POST',
+      action: '/settings',
+      encType: 'application/x-www-form-urlencoded'
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -102,14 +130,14 @@ export default function Settings() {
                 <div className="text-gray-500">Loading...</div>
               </div>
             ) : (
-            <Form method="post" className="space-y-6">
-              {actionData?.error && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {actionData.error}
+                  {error}
                 </div>
               )}
               
-              {actionData?.success && (
+              {success && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
                   Profile updated successfully!
                 </div>
@@ -201,7 +229,7 @@ export default function Settings() {
                   Cancel
                 </button>
               </div>
-            </Form>
+            </form>
             )}
           </div>
         </main>
@@ -213,41 +241,54 @@ export default function Settings() {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  const user = await requireAuth(request);
-  const formData = await request.formData();
-  
-  const displayName = formData.get('displayName') as string;
-  const username = formData.get('username') as string;
-  const bio = formData.get('bio') as string;
-  const avatar = formData.get('avatar') as string;
-
-  if (!displayName || !username) {
-    return { error: 'Display name and username are required' };
-  }
-
-  if (username.length > 15) {
-    return { error: 'Username must be 15 characters or less' };
-  }
-
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    return { error: 'Username can only contain letters, numbers, and underscores' };
-  }
-
-  if (bio && bio.length > 160) {
-    return { error: 'Bio must be 160 characters or less' };
-  }
-
   try {
+    // Get token from form data since React Router doesn't send custom headers
+    const formData = await request.formData();
+    const token = formData.get('token') as string;
+    
+    if (!token) {
+      return Response.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    // Manually verify the token
+    let userPayload;
+    try {
+      userPayload = verifyToken(token);
+    } catch (error) {
+      return Response.json({ error: 'Invalid or expired token' }, { status: 401 });
+    }
+
+    const displayName = formData.get('displayName') as string;
+    const username = formData.get('username') as string;
+    const bio = formData.get('bio') as string;
+    const avatar = formData.get('avatar') as string;
+
+    if (!displayName || !username) {
+      return Response.json({ error: 'Display name and username are required' }, { status: 400 });
+    }
+
+    if (username.length > 15) {
+      return Response.json({ error: 'Username must be 15 characters or less' }, { status: 400 });
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      return Response.json({ error: 'Username can only contain letters, numbers, and underscores' }, { status: 400 });
+    }
+
+    if (bio && bio.length > 160) {
+      return Response.json({ error: 'Bio must be 160 characters or less' }, { status: 400 });
+    }
+
     // Check if username is already taken by another user
-    const [otherUserWithUsername] = await db
+    const existingUsers = await db
       .select({ id: users.id })
       .from(users)
-      .where(and(eq(users.username, username)))
-      .limit(1);
+      .where(eq(users.username, username));
 
-    if (otherUserWithUsername && otherUserWithUsername.id !== user.userId) {
-      return { error: 'Username is already taken' };
-    }
+    const conflictingUser = existingUsers.find(u => u.id !== userPayload.userId);
+    if (conflictingUser) {
+      return Response.json({ error: 'Username is already taken' }, { status: 400 });
+ }
 
     await db
       .update(users)
@@ -258,11 +299,15 @@ export async function action({ request }: ActionFunctionArgs) {
         avatar_url: avatar || null,
         updated_at: new Date()
       })
-      .where(eq(users.id, user.userId));
+      .where(eq(users.id, userPayload.userId));
 
-    return { success: true };
+    return Response.json({ success: true });
   } catch (error) {
+    if (error instanceof Response && error.status === 401) {
+      return Response.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    
     console.error('Error updating profile:', error);
-    return { error: 'Failed to update profile' };
+    return Response.json({ error: 'Failed to update profile' }, { status: 500 });
   }
 }

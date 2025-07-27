@@ -1,1 +1,0 @@
-import{w as o,u as n,r as a}from"./chunk-C37GKA54-DQXCPS3O.js";const i=o(function(){const e=n();return a.useEffect(()=>{const t=localStorage.getItem("token");e(t?"/home":"/login")},[e]),null});export{i as default};

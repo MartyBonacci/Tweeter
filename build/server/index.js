@@ -613,6 +613,7 @@ function Sidebar() {
 }
 function useUser() {
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
     const updateUser = () => {
       const token = localStorage.getItem("token");
@@ -630,6 +631,7 @@ function useUser() {
       } else {
         setUser(null);
       }
+      setIsLoading(false);
     };
     updateUser();
     window.addEventListener("storage", updateUser);
@@ -639,11 +641,11 @@ function useUser() {
       window.removeEventListener("tokenChanged", updateUser);
     };
   }, []);
-  return user;
+  return { user, isLoading };
 }
 function MobileNav() {
   const location = useLocation();
-  const currentUser = useUser();
+  const { user: currentUser } = useUser();
   const isActive = (path) => location.pathname === path;
   return /* @__PURE__ */ jsx("nav", { className: "lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50", children: /* @__PURE__ */ jsxs("div", { className: "flex justify-around items-center h-16 max-w-md mx-auto", children: [
     /* @__PURE__ */ jsxs(
@@ -806,7 +808,7 @@ function TweetForm() {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const user = useUser();
+  const { user } = useUser();
   const charCount = content.length;
   const isOverLimit = charCount > 140;
   const remainingChars = 140 - charCount;
@@ -1007,16 +1009,19 @@ function Timeline() {
   ] });
 }
 const home = UNSAFE_withComponentProps(function Home() {
-  const user = useUser();
+  const {
+    user,
+    isLoading
+  } = useUser();
   const navigate = useNavigate();
   useEffect(() => {
-    if (!user) {
+    if (!isLoading && !user) {
       const token = localStorage.getItem("token");
       if (!token) {
         navigate("/login");
       }
     }
-  }, [user, navigate]);
+  }, [user, isLoading, navigate]);
   return /* @__PURE__ */ jsxs("div", {
     className: "min-h-screen bg-gray-50",
     children: [/* @__PURE__ */ jsx(Header, {}), /* @__PURE__ */ jsxs("div", {
@@ -1040,7 +1045,9 @@ const route4 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
 }, Symbol.toStringTag, { value: "Module" }));
 const users_$username = UNSAFE_withComponentProps(function UserProfile() {
   const data2 = useLoaderData();
-  const currentUser = useUser();
+  const {
+    user: currentUser
+  } = useUser();
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [followerCount, setFollowerCount] = useState(data2.followersCount);
@@ -1338,43 +1345,109 @@ const route5 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   default: users_$username,
   loader: loader$5
 }, Symbol.toStringTag, { value: "Module" }));
+async function loader$4({
+  request
+}) {
+  return {
+    user: null
+  };
+}
 const settings = UNSAFE_withComponentProps(function Settings() {
-  const user = useUser();
+  const {
+    user: initialData
+  } = useLoaderData();
+  const {
+    user,
+    isLoading: isAuthLoading
+  } = useUser();
   const navigate = useNavigate();
-  const actionData = useActionData();
+  useActionData();
   const [userData, setUserData] = useState({
-    username: user?.username || "",
+    username: "",
     displayName: "",
     bio: "",
     avatar: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
   useEffect(() => {
-    if (!user) return;
-    const loadUserData = async () => {
+    if (!isAuthLoading && !user) {
+      navigate("/login");
+      return;
+    }
+    if (!user || isAuthLoading) {
+      return;
+    }
+    const fetchUserData = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) return;
+        if (!token) {
+          navigate("/login");
+          return;
+        }
         const response = await fetch(`/api/users/${user.username}`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
         });
-        if (response.ok) {
-          const data2 = await response.json();
-          setUserData({
-            username: data2.user.username || "",
-            displayName: data2.user.displayName || "",
-            bio: data2.user.bio || "",
-            avatar: data2.user.avatar || ""
-          });
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
         }
-      } catch (error) {
-        console.error("Error loading user data:", error);
+        const data2 = await response.json();
+        setUserData({
+          username: data2.username || "",
+          displayName: data2.displayName || "",
+          bio: data2.bio || "",
+          avatar: data2.avatar || ""
+        });
+      } catch (error2) {
+        console.error("Error fetching user data:", error2);
+      } finally {
+        setIsLoadingUser(false);
       }
     };
-    loadUserData();
-  }, [user]);
+    fetchUserData();
+  }, [user, navigate]);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+      const response = await fetch("/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Bearer ${token}`
+        },
+        body: new URLSearchParams({
+          displayName: userData.displayName,
+          username: userData.username,
+          bio: userData.bio || "",
+          avatar: userData.avatar || ""
+        })
+      });
+      if (!response.ok) {
+        const data2 = await response.json();
+        throw new Error(data2.error || "Failed to update profile");
+      }
+      setSuccess(true);
+      setTimeout(() => {
+        navigate(`/users/${userData.username}`);
+      }, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update profile");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return /* @__PURE__ */ jsxs("div", {
     className: "min-h-screen bg-gray-50",
     children: [/* @__PURE__ */ jsx(Header, {}), /* @__PURE__ */ jsxs("div", {
@@ -1389,13 +1462,19 @@ const settings = UNSAFE_withComponentProps(function Settings() {
           })
         }), /* @__PURE__ */ jsx("div", {
           className: "max-w-lg mx-auto p-4",
-          children: /* @__PURE__ */ jsxs(Form, {
-            method: "post",
+          children: isLoadingUser || isAuthLoading ? /* @__PURE__ */ jsx("div", {
+            className: "flex justify-center items-center py-8",
+            children: /* @__PURE__ */ jsx("div", {
+              className: "text-gray-500",
+              children: "Loading..."
+            })
+          }) : /* @__PURE__ */ jsxs("form", {
+            onSubmit: handleSubmit,
             className: "space-y-6",
-            children: [actionData?.error && /* @__PURE__ */ jsx("div", {
+            children: [error && /* @__PURE__ */ jsx("div", {
               className: "bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded",
-              children: actionData.error
-            }), actionData?.success && /* @__PURE__ */ jsx("div", {
+              children: error
+            }), success && /* @__PURE__ */ jsx("div", {
               className: "bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded",
               children: "Profile updated successfully!"
             }), /* @__PURE__ */ jsxs("div", {
@@ -1480,7 +1559,7 @@ const settings = UNSAFE_withComponentProps(function Settings() {
                 children: isLoading ? "Saving..." : "Save changes"
               }), /* @__PURE__ */ jsx("button", {
                 type: "button",
-                onClick: () => navigate(`/users/${user.username}`),
+                onClick: () => navigate(`/users/${user?.username || ""}`),
                 className: "bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300",
                 children: "Cancel"
               })]
@@ -1491,11 +1570,6 @@ const settings = UNSAFE_withComponentProps(function Settings() {
     }), /* @__PURE__ */ jsx(MobileNav, {})]
   });
 });
-async function loader$4({
-  request
-}) {
-  return await requireAuth(request);
-}
 async function action$5({
   request
 }) {
@@ -1506,33 +1580,43 @@ async function action$5({
   const bio = formData.get("bio");
   const avatar = formData.get("avatar");
   if (!displayName || !username) {
-    return {
+    return Response.json({
       error: "Display name and username are required"
-    };
+    }, {
+      status: 400
+    });
   }
   if (username.length > 15) {
-    return {
+    return Response.json({
       error: "Username must be 15 characters or less"
-    };
+    }, {
+      status: 400
+    });
   }
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    return {
+    return Response.json({
       error: "Username can only contain letters, numbers, and underscores"
-    };
+    }, {
+      status: 400
+    });
   }
   if (bio && bio.length > 160) {
-    return {
+    return Response.json({
       error: "Bio must be 160 characters or less"
-    };
+    }, {
+      status: 400
+    });
   }
   try {
     const [otherUserWithUsername] = await db.select({
       id: users.id
     }).from(users).where(and(eq(users.username, username))).limit(1);
     if (otherUserWithUsername && otherUserWithUsername.id !== user.userId) {
-      return {
+      return Response.json({
         error: "Username is already taken"
-      };
+      }, {
+        status: 400
+      });
     }
     await db.update(users).set({
       display_name: displayName,
@@ -1541,14 +1625,16 @@ async function action$5({
       avatar_url: avatar || null,
       updated_at: /* @__PURE__ */ new Date()
     }).where(eq(users.id, user.userId));
-    return {
+    return Response.json({
       success: true
-    };
+    });
   } catch (error) {
     console.error("Error updating profile:", error);
-    return {
+    return Response.json({
       error: "Failed to update profile"
-    };
+    }, {
+      status: 500
+    });
   }
 }
 const route6 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
@@ -1762,6 +1848,7 @@ async function loader$2({
       username: users.username,
       displayName: users.display_name,
       bio: users.bio,
+      avatar: users.avatar_url,
       createdAt: users.created_at
     }).from(users).where(eq(users.username, username)).limit(1);
     if (!user) {
@@ -2243,7 +2330,7 @@ const route13 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   __proto__: null,
   action
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-DbFH8i22.js", "imports": ["/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-C37GKA54-DQXCPS3O.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/root-FzJpI-uw.js", "imports": ["/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-C37GKA54-DQXCPS3O.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": "/", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_index-By1FOCQx.js", "imports": ["/assets/chunk-C37GKA54-DQXCPS3O.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/login": { "id": "routes/login", "parentId": "root", "path": "/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/login-BFS3pKUy.js", "imports": ["/assets/chunk-C37GKA54-DQXCPS3O.js", "/assets/jsx-runtime-D_zvdyIk.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/register": { "id": "routes/register", "parentId": "root", "path": "/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/register-mxq6cUN0.js", "imports": ["/assets/chunk-C37GKA54-DQXCPS3O.js", "/assets/jsx-runtime-D_zvdyIk.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/home": { "id": "routes/home", "parentId": "root", "path": "/home", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/home-CN-gbTw5.js", "imports": ["/assets/chunk-C37GKA54-DQXCPS3O.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/MobileNav-ByQsFy9P.js", "/assets/Tweet-G5-Cz1gG.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/users.$username": { "id": "routes/users.$username", "parentId": "root", "path": "/users/:username", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/users._username-CP0yoS66.js", "imports": ["/assets/chunk-C37GKA54-DQXCPS3O.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/Tweet-G5-Cz1gG.js", "/assets/MobileNav-ByQsFy9P.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/settings": { "id": "routes/settings", "parentId": "root", "path": "/settings", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/settings-B6ttTZxx.js", "imports": ["/assets/chunk-C37GKA54-DQXCPS3O.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/MobileNav-ByQsFy9P.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.tweets.api": { "id": "routes/api.tweets.api", "parentId": "root", "path": "/api/tweets", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.tweets.api-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.tweets.create.api": { "id": "routes/api.tweets.create.api", "parentId": "root", "path": "/api/tweets/create", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.tweets.create.api-DLdxOAow.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.users.$username.api": { "id": "routes/api.users.$username.api", "parentId": "root", "path": "/api/users/:username", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.users._username.api-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.users.$username.follow.api": { "id": "routes/api.users.$username.follow.api", "parentId": "root", "path": "/api/users/:username/follow", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.users._username.follow.api-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.tweets.$tweetId.like.api": { "id": "routes/api.tweets.$tweetId.like.api", "parentId": "root", "path": "/api/tweets/:tweetId/like", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.tweets._tweetId.like.api-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.auth.login": { "id": "routes/api.auth.login", "parentId": "root", "path": "/api/auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.auth.login-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.auth.register": { "id": "routes/api.auth.register", "parentId": "root", "path": "/api/auth/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.auth.register-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-b46fae79.js", "version": "b46fae79", "sri": void 0 };
+const serverManifest = { "entry": { "module": "/assets/entry.client-McodlLfg.js", "imports": ["/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-C37GKA54-DzvN4HZS.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/root-ATowwpFk.js", "imports": ["/assets/jsx-runtime-D_zvdyIk.js", "/assets/chunk-C37GKA54-DzvN4HZS.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": "/", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_index-DSPytAGF.js", "imports": ["/assets/chunk-C37GKA54-DzvN4HZS.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/login": { "id": "routes/login", "parentId": "root", "path": "/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/login-COuthTdY.js", "imports": ["/assets/chunk-C37GKA54-DzvN4HZS.js", "/assets/jsx-runtime-D_zvdyIk.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/register": { "id": "routes/register", "parentId": "root", "path": "/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/register-DblS6bUV.js", "imports": ["/assets/chunk-C37GKA54-DzvN4HZS.js", "/assets/jsx-runtime-D_zvdyIk.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/home": { "id": "routes/home", "parentId": "root", "path": "/home", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/home-H_pg3ltL.js", "imports": ["/assets/chunk-C37GKA54-DzvN4HZS.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/MobileNav-DSL4YrWt.js", "/assets/Tweet-PV8-JUvY.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/users.$username": { "id": "routes/users.$username", "parentId": "root", "path": "/users/:username", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/users._username-2C-SqeEb.js", "imports": ["/assets/chunk-C37GKA54-DzvN4HZS.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/Tweet-PV8-JUvY.js", "/assets/MobileNav-DSL4YrWt.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/settings": { "id": "routes/settings", "parentId": "root", "path": "/settings", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/settings-DbzOWw_l.js", "imports": ["/assets/chunk-C37GKA54-DzvN4HZS.js", "/assets/jsx-runtime-D_zvdyIk.js", "/assets/MobileNav-DSL4YrWt.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.tweets.api": { "id": "routes/api.tweets.api", "parentId": "root", "path": "/api/tweets", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.tweets.api-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.tweets.create.api": { "id": "routes/api.tweets.create.api", "parentId": "root", "path": "/api/tweets/create", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.tweets.create.api-DLdxOAow.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.users.$username.api": { "id": "routes/api.users.$username.api", "parentId": "root", "path": "/api/users/:username", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.users._username.api-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.users.$username.follow.api": { "id": "routes/api.users.$username.follow.api", "parentId": "root", "path": "/api/users/:username/follow", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.users._username.follow.api-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.tweets.$tweetId.like.api": { "id": "routes/api.tweets.$tweetId.like.api", "parentId": "root", "path": "/api/tweets/:tweetId/like", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.tweets._tweetId.like.api-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.auth.login": { "id": "routes/api.auth.login", "parentId": "root", "path": "/api/auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.auth.login-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.auth.register": { "id": "routes/api.auth.register", "parentId": "root", "path": "/api/auth/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.auth.register-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-c7f4f86a.js", "version": "c7f4f86a", "sri": void 0 };
 const assetsBuildDirectory = "build/client";
 const basename = "/";
 const future = { "unstable_middleware": false, "unstable_optimizeDeps": false, "unstable_splitRouteModules": false, "unstable_subResourceIntegrity": false, "unstable_viteEnvironmentApi": false };

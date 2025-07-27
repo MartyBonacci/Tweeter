@@ -4,6 +4,8 @@
 
 ### Frontend
 - **React Router 7** (Framework Mode): Full-stack React framework
+  - [Official Documentation for React Router 7 framework mode](https://reactrouter.com/start/framework/installation)
+  - [Example how to implement React Router 7 framework mode](https://github.com/MartyBonacci/react-router-7-tutorial/tree/main)
 - **TypeScript**: Type-safe JavaScript
 - **TailwindCSS**: Utility-first CSS framework
 - **Vite**: Fast build tool and dev server
