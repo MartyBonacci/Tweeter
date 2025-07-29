@@ -12,6 +12,8 @@
 
 ### Backend
 - **React Router 7 API Routes**: Server-side API endpoints
+  - [Official Documentation for React Router 7 framework mode](https://reactrouter.com/start/framework/installation)
+  - [Example how to implement React Router 7 framework mode](https://github.com/MartyBonacci/react-router-7-tutorial/tree/main)
 - **Drizzle ORM**: Type-safe database queries
 - **Zod**: Runtime type validation
 - **UUIDv7**: Time-sortable unique identifiers
