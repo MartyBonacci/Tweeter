@@ -17,6 +17,8 @@
 - **Drizzle ORM**: Type-safe database queries
 - **Zod**: Runtime type validation
 - **UUIDv7**: Time-sortable unique identifiers
+- **Cloudinary**: Image upload, optimization, and CDN delivery
+- **Mailgun**: Email verification and transactional email service
 
 ### Database
 - **PostgreSQL**: Primary database (via Neon)
@@ -64,36 +66,54 @@
 
 ### Route Structure
 ```
-src/routes/
-├── _index.tsx              # Home timeline
-├── login.tsx              # User authentication
-├── register.tsx           # User registration
-├── tweet.$id.tsx          # Individual tweet view
-├── profile.$username.tsx  # User profile
+app/routes/
+├── _index.tsx                        # Redirect to home
+├── home.tsx                         # Home timeline with tweet form
+├── login.tsx                        # User authentication
+├── register.tsx                     # User registration
+├── settings.tsx                     # Profile editing page
+├── users.$username.tsx              # User profile pages
 ├── api/
-│   ├── tweets.ts          # Tweet CRUD operations
-│   ├── users.ts          # User operations
-│   ├── follows.ts        # Follow/unfollow
-│   └── auth.ts           # Authentication endpoints
+│   ├── tweets.api.tsx              # Tweet retrieval with pagination
+│   ├── tweets.$tweetId.like.api.tsx # Like/unlike tweets
+│   ├── users.$username.api.tsx      # User profile data
+│   ├── users.$username.follow.api.tsx # Follow/unfollow users
+│   ├── auth.login.tsx              # Login authentication
+│   └── auth.register.tsx           # User registration
 ```
 
-### Controller Structure
+### Component Structure
 ```
-src/controllers/
-├── tweetController.ts     # Tweet business logic
-├── userController.ts      # User management
-├── authController.ts      # Authentication
-└── followController.ts    # Social connections
+app/components/
+├── Header.tsx            # Main navigation header
+├── Sidebar.tsx           # Desktop sidebar navigation
+├── MobileNav.tsx         # Mobile bottom navigation
+├── Timeline.tsx          # Tweet timeline display
+├── Tweet.tsx             # Individual tweet component
+├── TweetForm.tsx         # Tweet composition form
+├── LoginForm.tsx         # Login form component
+├── RegisterForm.tsx      # Registration form component
+└── ProfileEditForm.tsx   # Profile editing form
 ```
 
-### Model Structure
+### Database Schema Structure
 ```
-src/models/
-├── schema.ts             # Drizzle schema definitions
-├── user.ts              # User model
-├── tweet.ts             # Tweet model
-├── follow.ts            # Follow relationship
-└── like.ts              # Like relationship
+app/db/schema/
+├── index.ts              # Schema exports
+├── users.ts              # User table schema
+├── tweets.ts             # Tweet table schema
+├── follows.ts            # Follow relationships
+└── likes.ts              # Like relationships
+```
+
+### Utility Structure
+```
+app/lib/
+├── auth.server.ts        # JWT authentication utilities
+├── middleware.ts         # Authentication middleware
+├── schemas.ts            # Zod validation schemas
+├── validation.ts         # Form validation utilities
+└── validation-middleware.ts # API validation middleware
 ```
 
 ## Data Models
@@ -143,23 +163,87 @@ src/models/
 }
 ```
 
+## API Endpoints
+
+### Authentication Endpoints
+- `POST /api/auth/login` - User login with JWT token generation
+- `POST /api/auth/register` - User registration with validation
+
+### Tweet Endpoints
+- `GET /api/tweets` - Retrieve tweets with pagination and filtering
+  - Query params: `limit`, `offset`, `filter` (all/following)
+- `POST /home` - Create new tweet (via form action)
+
+### User Endpoints
+- `GET /api/users/:username` - Get user profile data
+- `GET /api/users/:username/follow` - Check follow status
+- `POST /api/users/:username/follow` - Follow user
+- `DELETE /api/users/:username/follow` - Unfollow user
+
+### Social Interaction Endpoints
+- `GET /api/tweets/:tweetId/like` - Get like status and count
+- `POST /api/tweets/:tweetId/like` - Like tweet
+- `DELETE /api/tweets/:tweetId/like` - Unlike tweet
+
+### Image Upload Endpoints
+- `POST /api/upload/avatar` - Upload profile image to Cloudinary
+- `DELETE /api/upload/avatar` - Remove profile image
+
+### Email Verification Endpoints
+- `POST /api/auth/verify-email/:token` - Verify email address with token
+- `POST /api/auth/resend-verification` - Resend verification email
+- `GET /api/auth/verification-status` - Check verification status
+
 ## Data Flow
 
 ### Creating a Tweet
-1. User submits tweet via frontend form
-2. React Router API route receives request
-3. Zod validates 140-character limit
-4. Controller creates tweet record
-5. Database stores tweet with UUIDv7 ID
-6. Timeline cache updated
-7. Websocket notifies followers (future enhancement)
+1. User submits tweet via TweetForm component on home page
+2. Form data sent to home route action with authentication token
+3. Server verifies JWT token and extracts user ID
+4. Zod schema validates content (140-character limit, non-empty)
+5. Database insert with UUIDv7 ID and timestamp
+6. Success response triggers timeline refresh
+7. Tweet appears immediately in user's timeline
 
 ### Loading Timeline
-1. User visits home page
-2. API fetches followed users' tweets
-3. Reverse chronological sorting
-4. Pagination for infinite scroll
-5. Hydrate React components with data
+1. User visits home page, Timeline component loads
+2. Client fetches from `/api/tweets` with authentication headers
+3. Server queries database with pagination (limit/offset)
+4. Joins tweets with user data and calculates like counts
+5. Returns JSON response with tweet data
+6. React hydrates Timeline component with server data
+7. Infinite scroll loads additional pages on demand
+
+### Social Interactions (Follow/Like)
+1. User clicks follow/like button with loading state
+2. Frontend sends API request with authentication
+3. Server validates user permissions and target existence
+4. Database transaction updates relationships
+5. Response includes updated counts and success status
+6. Frontend updates UI with new state and counts
+7. Optimistic updates provide immediate feedback
+
+### Profile Image Upload (Cloudinary)
+1. User selects image file in profile edit form
+2. Cloudinary upload widget handles file validation
+3. Image uploaded directly to Cloudinary with signed parameters
+4. Cloudinary processes and optimizes image automatically
+5. Upload progress tracked and displayed to user
+6. Cloudinary returns secure URL and transformation details
+7. Frontend sends URL to server API for profile update
+8. Database stores Cloudinary URL in avatar_url field
+9. Profile immediately updates across all UI components
+
+### Email Verification (Mailgun)
+1. User completes registration form with email
+2. Server creates user record with email_verified=false
+3. Crypto generates secure verification token with expiration
+4. Server stores token and expiration in database
+5. Mailgun API sends verification email with token link
+6. User clicks verification link in email
+7. Server validates token and checks expiration
+8. Database updates email_verified=true for user
+9. User redirected to login with verification success message
 
 ## Security Considerations
 
@@ -173,7 +257,9 @@ src/models/
 - Zod schemas for all inputs
 - SQL injection prevention via parameterized queries
 - XSS protection through React's built-in escaping
-- File upload restrictions for avatars
+- File upload restrictions and validation via Cloudinary
+- Email address validation and verification tokens
+- Secure token generation using crypto module
 
 ### Privacy
 - User data encryption at rest
@@ -181,25 +267,51 @@ src/models/
 - Privacy-focused default settings
 - No third-party tracking
 
+### Third-Party Service Security
+- **Cloudinary**: Signed uploads with API key restrictions
+- **Mailgun**: API key rotation and domain verification
+- **Environment Variables**: Secure storage of API credentials
+- **Rate Limits**: Upload quotas and email sending limits
+- **Data Retention**: Image optimization and email log policies
+
 ## Performance Optimization
 
 ### Database
-- Proper indexing on user_id, created_at
-- Pagination with cursor-based approach
-- Read replicas for scaling (future)
-- Connection pooling
+- Proper indexing on user_id, created_at, tweet_id
+- Pagination with limit/offset approach (20 tweets per page)
+- Efficient joins for user data and like counts
+- Connection pooling via Drizzle ORM
+- UUIDv7 for time-sorted unique identifiers
 
 ### Frontend
-- React.lazy() for code splitting
-- Image optimization with modern formats
-- Service worker for caching
-- Bundle size monitoring
+- Real-time character counting with debounced validation
+- Loading states for all async operations
+- Optimistic UI updates for social interactions
+- Mobile-first responsive design
+- Efficient React component rendering
+
+### API Performance
+- JWT token validation for protected routes
+- Zod schema validation for request/response data
+- Efficient database queries with joins
+- Pagination to limit response sizes
+- Error handling with appropriate HTTP status codes
 
 ### Caching Strategy
-- Browser caching for static assets
-- API response caching with ETags
-- Database query result caching
-- CDN for global asset delivery
+- Browser caching for static assets via Vite
+- LocalStorage for JWT tokens and user data
+- Component-level state caching
+- Cloudinary CDN for global image delivery
+- Mailgun template caching for faster email generation
+- Future: Redis for session storage and API caching
+
+### Third-Party Service Performance
+- **Cloudinary**: Auto-format, auto-quality, and responsive images
+- **Image Transformations**: On-the-fly resizing and optimization
+- **CDN Distribution**: Global content delivery for fast image loading
+- **Mailgun**: Template-based emails with inline CSS optimization
+- **Email Queue**: Async processing to prevent blocking operations
+- **Service Monitoring**: Health checks and fallback strategies
 
 ## Monitoring & Observability
 

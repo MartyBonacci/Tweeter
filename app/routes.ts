@@ -30,10 +30,6 @@ export default [
     file: "routes/api.tweets.api.tsx",
   },
   {
-    path: "/api/tweets/create",
-    file: "routes/api.tweets.create.api.tsx",
-  },
-  {
     path: "/api/users/:username",
     file: "routes/api.users.$username.api.tsx",
   },
@@ -52,5 +48,21 @@ export default [
   {
     path: "/api/auth/register",
     file: "routes/api.auth.register.tsx",
+  },
+  {
+    path: "/api/auth/verify-email/:token",
+    file: "routes/api.auth.verify-email.$token.api.tsx",
+  },
+  {
+    path: "/api/upload/avatar",
+    file: "routes/api.upload.avatar.api.tsx",
+  },
+  {
+    path: "/api/search",
+    file: "routes/api.search.api.tsx",
+  },
+  {
+    path: "/search",
+    file: "routes/search.tsx",
   },
 ] satisfies RouteConfig;

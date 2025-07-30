@@ -1,5 +1,6 @@
-import { useLoaderData, Link, type LoaderFunctionArgs, data } from 'react-router';
+import { useLoaderData, Link, type LoaderFunctionArgs, data, Navigate } from 'react-router';
 import { Tweet } from '../components/Tweet';
+import { Avatar } from '../components/Avatar';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import MobileNav from '../components/MobileNav';
@@ -44,6 +45,7 @@ export default function UserProfile() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [followerCount, setFollowerCount] = useState(data.followersCount);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Debug: Log user state
   console.log('Current user:', currentUser);
@@ -103,6 +105,14 @@ export default function UserProfile() {
     }
   };
 
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('tokenChanged'));
+    window.location.href = '/login';
+  };
+
   if (data && typeof data === 'object' && 'error' in data) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -148,26 +158,28 @@ export default function UserProfile() {
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-end space-x-3">
-                    {user.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt={user.displayName}
-                        className="h-20 w-20 rounded-full border-4 border-white"
-                      />
-                    ) : (
-                      <div className="h-20 w-20 rounded-full bg-gray-300 border-4 border-white flex items-center justify-center">
-                        <span className="text-2xl font-semibold text-gray-600">
-                          {user.displayName?.charAt(0)?.toUpperCase() || 'U'}
-                        </span>
-                      </div>
-                    )}
+                    <Avatar 
+                      src={user.avatar}
+                      alt={user.displayName || user.username}
+                      size="xl"
+                      className="h-20 w-20 border-4 border-white"
+                    />
                     {currentUser?.username === data.user.username ? (
-                      <Link
-                        to="/settings"
-                        className="ml-auto bg-white border border-gray-300 text-gray-900 px-4 py-1 rounded-full font-medium hover:bg-gray-50"
-                      >
-                        Edit profile
-                      </Link>
+                      <div className="ml-auto flex space-x-2">
+                        <Link
+                          to="/settings"
+                          className="bg-white border border-gray-300 text-gray-900 px-4 py-1 rounded-full font-medium hover:bg-gray-50"
+                        >
+                          Edit profile
+                        </Link>
+                        <button
+                          onClick={handleLogout}
+                          disabled={isLoggingOut}
+                          className="bg-red-500 border border-red-500 text-white px-4 py-1 rounded-full font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoggingOut ? 'Logging out...' : 'Logout'}
+                        </button>
+                      </div>
                     ) : currentUser ? (
                       <button
                         onClick={handleFollow}

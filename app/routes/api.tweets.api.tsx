@@ -6,6 +6,8 @@ import { users } from '../db/schema/users';
 import { follows } from '../db/schema/follows';
 import { likes } from '../db/schema/likes';
 import { desc, eq, inArray, count } from 'drizzle-orm';
+import { paginationQuerySchema } from '../lib/schemas';
+import { validateQuery } from '../lib/validation-middleware';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -14,12 +16,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireAuth(request);
   
   const url = new URL(request.url);
-  const limit = Math.min(
-    parseInt(url.searchParams.get('limit') || String(DEFAULT_LIMIT)),
-    MAX_LIMIT
-  );
-  const offset = parseInt(url.searchParams.get('offset') || '0');
-  const filter = url.searchParams.get('filter') || 'all';
+  
+  // Validate query parameters
+  const queryValidation = validateQuery(url, paginationQuerySchema);
+  if (!queryValidation.isValid) {
+    return data({ error: 'Invalid query parameters', errors: queryValidation.errors }, { status: 400 });
+  }
+  
+  const { limit, offset, filter } = queryValidation.data;
 
   try {
     if (filter === 'following') {
@@ -42,6 +46,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             id: users.id,
             username: users.username,
             displayName: users.display_name,
+            avatar: users.avatar_url,
           },
         })
         .from(tweets)
@@ -80,6 +85,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             id: users.id,
             username: users.username,
             displayName: users.display_name,
+            avatar: users.avatar_url,
           },
         })
         .from(tweets)

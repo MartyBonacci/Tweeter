@@ -1,8 +1,10 @@
 import { db } from "../db/drizzle";
 import { users } from "../db/schema";
 import { hashPassword, generateToken } from "../lib/auth.server";
-import { validateUsername, validateEmail, validatePassword } from "../lib/validation";
+import { userRegistrationSchema } from "../lib/schemas";
+import { validateFormData, createValidationErrorResponse } from "../lib/validation-middleware";
 import { eq } from "drizzle-orm";
+import { generateVerificationToken, sendVerificationEmail } from "../lib/email.server";
 
 export async function action({ request }: { request: Request }) {
   if (request.method !== "POST") {
@@ -14,28 +16,15 @@ export async function action({ request }: { request: Request }) {
 
   try {
     const formData = await request.formData();
-    const username = formData.get("username") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const displayName = formData.get("displayName") as string;
-
-    // Validate input
-    const usernameValidation = validateUsername(username);
-    const emailValidation = validateEmail(email);
-    const passwordValidation = validatePassword(password);
-
-    const errors = [
-      ...usernameValidation.errors,
-      ...emailValidation.errors,
-      ...passwordValidation.errors,
-    ];
-
-    if (errors.length > 0) {
-      return new Response(JSON.stringify({ errors }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    
+    // Validate input using Zod schema
+    const validation = validateFormData(formData, userRegistrationSchema);
+    
+    if (!validation.isValid) {
+      return createValidationErrorResponse(validation.errors);
     }
+    
+    const { username, email, password, displayName } = validation.data;
 
     // Check if username already exists
     const existingUser = await db
@@ -69,16 +58,21 @@ export async function action({ request }: { request: Request }) {
       });
     }
 
-    // Hash password and create user
+    // Hash password and create user with email verification
     const passwordHash = await hashPassword(password);
+    const verificationToken = generateVerificationToken();
+    const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     
     const [newUser] = await db
       .insert(users)
       .values({
-        username: username.toLowerCase(),
-        email: email.toLowerCase(),
+        username, // Already transformed to lowercase by Zod
+        email, // Already transformed to lowercase by Zod
         password_hash: passwordHash,
         display_name: displayName || username,
+        email_verified: false,
+        verification_token: verificationToken,
+        token_expires: tokenExpires,
       })
       .returning({
         id: users.id,
@@ -87,20 +81,24 @@ export async function action({ request }: { request: Request }) {
         displayName: users.display_name,
       });
 
-    // Generate JWT token
-    const token = generateToken({
-      userId: newUser.id,
-      username: newUser.username,
-    });
+    // Send verification email
+    try {
+      await sendVerificationEmail(email, username, verificationToken);
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      // Continue with registration even if email fails
+    }
 
     return new Response(JSON.stringify({
+      message: "User registered successfully. Please check your email to verify your account.",
       user: {
         id: newUser.id,
         username: newUser.username,
         email: newUser.email,
         displayName: newUser.displayName,
+        emailVerified: false
       },
-      token,
+      requiresEmailVerification: true
     }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }

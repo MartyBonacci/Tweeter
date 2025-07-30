@@ -1,79 +1,92 @@
-export interface ValidationError {
-  field: string;
-  message: string;
-}
+import { 
+  userRegistrationSchema, 
+  userLoginSchema, 
+  tweetContentSchema 
+} from './schemas';
+import { ValidationError, ValidationResult, validateFormData } from './validation-middleware';
 
-export interface ValidationResult {
-  isValid: boolean;
-  errors: ValidationError[];
-}
+// Re-export types for backward compatibility
+export type { ValidationError, ValidationResult };
 
+/**
+ * Validates username using Zod schema
+ * @deprecated Use userRegistrationSchema or userLoginSchema directly
+ */
 export function validateUsername(username: string): ValidationResult {
-  const errors: ValidationError[] = [];
-
-  if (!username || username.length < 3) {
-    errors.push({ field: 'username', message: 'Username must be at least 3 characters long' });
+  try {
+    const usernameSchema = userRegistrationSchema.pick({ username: true });
+    const result = usernameSchema.parse({ username });
+    return { isValid: true, errors: [] };
+  } catch (error: any) {
+    if (error.issues) {
+      const errors: ValidationError[] = error.issues.map((err: any) => ({
+        field: err.path.join('.'),
+        message: err.message
+      }));
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: [{ field: 'username', message: 'Invalid username' }] };
   }
-
-  if (username.length > 50) {
-    errors.push({ field: 'username', message: 'Username must be at most 50 characters long' });
-  }
-
-  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-    errors.push({ field: 'username', message: 'Username can only contain letters, numbers, underscores, and hyphens' });
-  }
-
-  return { isValid: errors.length === 0, errors };
 }
 
+/**
+ * Validates email using Zod schema
+ * @deprecated Use userRegistrationSchema directly
+ */
 export function validateEmail(email: string): ValidationResult {
-  const errors: ValidationError[] = [];
-  
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
-  if (!email || !emailRegex.test(email)) {
-    errors.push({ field: 'email', message: 'Please enter a valid email address' });
+  try {
+    const emailSchema = userRegistrationSchema.pick({ email: true });
+    const result = emailSchema.parse({ email });
+    return { isValid: true, errors: [] };
+  } catch (error: any) {
+    if (error.issues) {
+      const errors: ValidationError[] = error.issues.map((err: any) => ({
+        field: err.path.join('.'),
+        message: err.message
+      }));
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: [{ field: 'email', message: 'Invalid email' }] };
   }
-
-  return { isValid: errors.length === 0, errors };
 }
 
+/**
+ * Validates password using Zod schema
+ * @deprecated Use userRegistrationSchema directly
+ */
 export function validatePassword(password: string): ValidationResult {
-  const errors: ValidationError[] = [];
-
-  if (!password || password.length < 8) {
-    errors.push({ field: 'password', message: 'Password must be at least 8 characters long' });
+  try {
+    const passwordSchema = userRegistrationSchema.pick({ password: true });
+    const result = passwordSchema.parse({ password });
+    return { isValid: true, errors: [] };
+  } catch (error: any) {
+    if (error.issues) {
+      const errors: ValidationError[] = error.issues.map((err: any) => ({
+        field: err.path.join('.'),
+        message: err.message
+      }));
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: [{ field: 'password', message: 'Invalid password' }] };
   }
-
-  if (password.length > 128) {
-    errors.push({ field: 'password', message: 'Password must be at most 128 characters long' });
-  }
-
-  if (!/(?=.*[a-z])/.test(password)) {
-    errors.push({ field: 'password', message: 'Password must contain at least one lowercase letter' });
-  }
-
-  if (!/(?=.*[A-Z])/.test(password)) {
-    errors.push({ field: 'password', message: 'Password must contain at least one uppercase letter' });
-  }
-
-  if (!/(?=.*\d)/.test(password)) {
-    errors.push({ field: 'password', message: 'Password must contain at least one number' });
-  }
-
-  return { isValid: errors.length === 0, errors };
 }
 
+/**
+ * Validates tweet content using Zod schema
+ * @deprecated Use tweetContentSchema directly
+ */
 export function validateTweetContent(content: string): ValidationResult {
-  const errors: ValidationError[] = [];
-
-  if (!content || content.trim().length === 0) {
-    errors.push({ field: 'content', message: 'Tweet content is required' });
+  try {
+    const result = tweetContentSchema.parse({ content });
+    return { isValid: true, errors: [] };
+  } catch (error: any) {
+    if (error.issues) {
+      const errors: ValidationError[] = error.issues.map((err: any) => ({
+        field: err.path.join('.'),
+        message: err.message
+      }));
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: [{ field: 'content', message: 'Invalid tweet content' }] };
   }
-
-  if (content.length > 140) {
-    errors.push({ field: 'content', message: 'Tweet must be 140 characters or less' });
-  }
-
-  return { isValid: errors.length === 0, errors };
 }

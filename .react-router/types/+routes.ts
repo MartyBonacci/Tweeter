@@ -33,9 +33,6 @@ type Pages = {
   "/api/tweets": {
     params: {};
   };
-  "/api/tweets/create": {
-    params: {};
-  };
   "/api/users/:username": {
     params: {
       "username": string;
@@ -57,12 +54,26 @@ type Pages = {
   "/api/auth/register": {
     params: {};
   };
+  "/api/auth/verify-email/:token": {
+    params: {
+      "token": string;
+    };
+  };
+  "/api/upload/avatar": {
+    params: {};
+  };
+  "/api/search": {
+    params: {};
+  };
+  "/search": {
+    params: {};
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/home" | "/users/:username" | "/settings" | "/api/tweets" | "/api/tweets/create" | "/api/users/:username" | "/api/users/:username/follow" | "/api/tweets/:tweetId/like" | "/api/auth/login" | "/api/auth/register";
+    page: "/" | "/login" | "/register" | "/home" | "/users/:username" | "/settings" | "/api/tweets" | "/api/users/:username" | "/api/users/:username/follow" | "/api/tweets/:tweetId/like" | "/api/auth/login" | "/api/auth/register" | "/api/auth/verify-email/:token" | "/api/upload/avatar" | "/api/search" | "/search";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -92,10 +103,6 @@ type RouteFiles = {
     id: "routes/api.tweets.api";
     page: "/api/tweets";
   };
-  "routes/api.tweets.create.api.tsx": {
-    id: "routes/api.tweets.create.api";
-    page: "/api/tweets/create";
-  };
   "routes/api.users.$username.api.tsx": {
     id: "routes/api.users.$username.api";
     page: "/api/users/:username";
@@ -115,5 +122,21 @@ type RouteFiles = {
   "routes/api.auth.register.tsx": {
     id: "routes/api.auth.register";
     page: "/api/auth/register";
+  };
+  "routes/api.auth.verify-email.$token.api.tsx": {
+    id: "routes/api.auth.verify-email.$token.api";
+    page: "/api/auth/verify-email/:token";
+  };
+  "routes/api.upload.avatar.api.tsx": {
+    id: "routes/api.upload.avatar.api";
+    page: "/api/upload/avatar";
+  };
+  "routes/api.search.api.tsx": {
+    id: "routes/api.search.api";
+    page: "/api/search";
+  };
+  "routes/search.tsx": {
+    id: "routes/search";
+    page: "/search";
   };
 };

@@ -1,85 +1,91 @@
-import { useState, useEffect } from 'react';
-import { useUser } from '../hooks/useUser';
+import React, { useState } from 'react';
+import { Form, useActionData } from 'react-router';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { tweetContentSchema, type TweetContent } from '../lib/schemas';
+import { Avatar } from './Avatar';
+
+interface ActionData {
+  error?: string;
+  errors?: Array<{field: string; message: string}>;
+  success?: boolean;
+  tweet?: {
+    id: string;
+    content: string;
+    createdAt: string;
+  };
+}
 
 export function TweetForm() {
-  const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { user } = useUser();
+  const [token, setToken] = useState('');
+  const { user } = useCurrentUser();
+  const actionData = useActionData() as ActionData;
   
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    reset,
+    setError
+  } = useForm<TweetContent>({
+    resolver: zodResolver(tweetContentSchema),
+    defaultValues: { content: '' }
+  });
+  
+  const content = watch('content') || '';
   const charCount = content.length;
   const isOverLimit = charCount > 140;
   const remainingChars = 140 - charCount;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (content.trim() && !isOverLimit) {
-      setIsSubmitting(true);
-      setError(null);
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('Please log in to create tweets');
-        setIsSubmitting(false);
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/tweets/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': `Bearer ${token}`
-          },
-          body: new URLSearchParams({ content: content.trim() })
-        });
-
-        const data = await response.json();
-        
-        if (data.error) {
-          setError(data.error);
-        } else if (data.tweet) {
-          setContent('');
-          // Refresh the page to show new tweet
-          window.location.reload();
-        }
-      } catch (err) {
-        setError('Failed to create tweet');
-      } finally {
-        setIsSubmitting(false);
-      }
+  // Set token from localStorage on client side only
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setToken(localStorage.getItem('token') || '');
     }
-  };
+  }, []);
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
-    if (newContent.length <= 140) {
-      setContent(newContent);
+  // Handle server-side validation errors
+  React.useEffect(() => {
+    if (actionData?.errors) {
+      actionData.errors.forEach(error => {
+        setError(error.field as keyof TweetContent, { message: error.message });
+      });
     }
-  };
+  }, [actionData?.errors, setError]);
+
+  // Clear form content on successful tweet creation and trigger page refresh
+  React.useEffect(() => {
+    if (actionData?.tweet) {
+      reset();
+      // Trigger a page refresh to show the new tweet
+      window.location.reload();
+    }
+  }, [actionData, reset]);
 
 
   return (
     <div className="border-b border-gray-200 p-4">
       <div className="flex space-x-3">
         <div className="flex-shrink-0">
-          <div className="h-12 w-12 rounded-full bg-gray-300 flex items-center justify-center">
-            <span className="text-lg font-semibold text-gray-600">
-              {user?.username?.charAt(0).toUpperCase() || 'U'}
-            </span>
-          </div>
+          <Avatar 
+            src={user?.avatar}
+            alt={user?.displayName || user?.username || 'User'}
+            size="md"
+          />
         </div>
         
         <div className="flex-1">
-          <form onSubmit={handleSubmit}>
+          <Form method="post">
+            <input type="hidden" name="token" value={token} />
             <textarea
-              value={content}
-              onChange={handleContentChange}
+              {...register("content")}
               placeholder="What's happening?"
-              className="w-full resize-none border-0 focus:ring-0 text-lg placeholder-gray-500 p-0 min-h-[60px]"
+              className={`w-full resize-none border-0 focus:ring-0 text-lg placeholder-gray-500 p-0 min-h-[60px] ${
+                errors.content ? 'text-red-500' : ''
+              }`}
               rows={3}
-              disabled={isSubmitting}
             />
             
             <div className="flex items-center justify-between mt-2">
@@ -96,13 +102,16 @@ export function TweetForm() {
                 disabled={!content.trim() || isOverLimit || isSubmitting}
                 className="bg-blue-500 text-white px-4 py-2 rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
               >
-                {isSubmitting ? 'Posting...' : 'Tweet'}
+                {isSubmitting ? 'Tweeting...' : 'Tweet'}
               </button>
             </div>
-          </form>
+          </Form>
           
-          {error && (
-            <p className="text-red-500 text-sm mt-2">{error}</p>
+          {actionData?.error && (
+            <p className="text-red-500 text-sm mt-2">{actionData.error}</p>
+          )}
+          {errors.content && (
+            <p className="text-red-500 text-sm mt-2">{errors.content.message}</p>
           )}
         </div>
       </div>

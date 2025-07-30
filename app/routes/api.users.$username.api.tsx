@@ -50,6 +50,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
           id: users.id,
           username: users.username,
           displayName: users.display_name,
+          avatar: users.avatar_url,
         },
       })
       .from(tweets)

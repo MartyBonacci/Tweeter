@@ -40,7 +40,12 @@ pnpm install
 3. Set up environment variables
 ```bash
 cp .env.example .env
-# Edit .env with your database credentials
+# Edit .env with your configuration:
+# - DATABASE_URL: Your PostgreSQL connection string (Neon recommended)
+# - JWT_SECRET: A strong random string for authentication
+# - CLOUDINARY_*: Your Cloudinary credentials for image uploads
+# - MAILGUN_*: Your Mailgun credentials for email verification
+# - APP_URL: Your application URL (use http://localhost:5173 for development)
 ```
 
 4. Set up the database
@@ -110,13 +115,33 @@ tweeter/
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## Roadmap
+## Features
 
-- [ ] User authentication and profiles
-- [ ] 140-character tweet posting
-- [ ] Timeline feed
-- [ ] Follow/unfollow functionality
-- [ ] Like and retweet features
-- [ ] Real-time updates
-- [ ] Mobile-responsive design
+### ✅ Implemented
+- ✅ User authentication and profiles with email verification
+- ✅ 140-character tweet posting with real-time validation
+- ✅ Timeline feed with infinite scroll
+- ✅ Follow/unfollow functionality with real-time counts
+- ✅ Like system with instant feedback
+- ✅ Mobile-responsive design
+- ✅ Profile editing with Cloudinary image uploads
+- ✅ Search functionality (users, tweets, hashtags)
+- ✅ Performance optimizations with React.memo and loading skeletons
+
+### 🔄 In Progress
+- [ ] Real-time notifications
+- [ ] Enhanced error boundaries
+
+### 🚀 Future Features
+- [ ] Retweet functionality
+- [ ] Direct messaging
+- [ ] Tweet threading
+- [ ] Push notifications
+
+## Third-Party Services
+
+This project integrates with:
+- **[Cloudinary](https://cloudinary.com)**: Image upload and optimization
+- **[Mailgun](https://mailgun.com)**: Email verification and notifications
+- **[Neon](https://neon.tech)**: PostgreSQL database hosting
 EOF < /dev/null

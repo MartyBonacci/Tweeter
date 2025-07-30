@@ -1,6 +1,6 @@
-# Current Sprint Tasks - Sprint 2 (Core Tweet Functionality)
+# Current Sprint Tasks - Sprint 4 (Polish & Performance)
 
-## Sprint Goal: Implement core tweet creation, display, and timeline functionality
+## Sprint Goal: Optimize performance, enhance user experience, and implement advanced features
 
 ### Task Status Legend
 - **To Do** 📝: Not started
@@ -12,124 +12,218 @@
 
 ## High Priority Tasks
 
-### 1. Tweet Creation System ✅
-**Status**: Completed  
-**Description**: Implement tweet creation with 140-character limit  
-**Completed**: July 26, 2025
+### 1. Search Functionality 📝
+**Status**: To Do  
+**Description**: Implement user and hashtag search capabilities  
 **Acceptance Criteria**:
-- ✅ Tweet creation form in home page
-- ✅ 140-character limit validation (client & server)
-- ✅ Character counter display
-- ✅ Tweet submission API endpoint (/api/tweets/create)
-- ✅ Real-time tweet addition to timeline
-- ✅ Loading states during submission
+- [ ] Search API endpoint with query parameter
+- [ ] Search results page with user profiles
+- [ ] Real-time search suggestions
+- [ ] Search input component in header
+- [ ] Hashtag extraction and search
+- [ ] Empty state for no results
 
-**Estimated Effort**: 3 hours  
+**Estimated Effort**: 6 hours  
+**Dependencies**: User profiles and timeline complete
+
+### 2. Real-time Notifications 📝
+**Status**: To Do  
+**Description**: Implement notification system for likes and follows  
+**Acceptance Criteria**:
+- [ ] Notification database schema
+- [ ] API endpoints for notifications
+- [ ] Notification badge in header
+- [ ] Notification list component
+- [ ] Mark as read functionality
+- [ ] Real-time updates via polling
+
+**Estimated Effort**: 8 hours  
+**Dependencies**: Like and follow systems complete
+
+### 3. Performance Optimization 📝
+**Status**: To Do  
+**Description**: Optimize application performance and bundle size  
+**Acceptance Criteria**:
+- [ ] Implement React.memo for tweet components
+- [ ] Add loading skeletons for better UX
+- [ ] Optimize image loading and compression
+- [ ] Bundle size analysis and optimization
+- [ ] Database query optimization
+- [ ] API response caching strategies
+
+**Estimated Effort**: 5 hours  
+**Dependencies**: Core features complete
+
+### 4. Cloudinary Profile Image Upload 📝
+**Status**: To Do  
+**Description**: Integrate Cloudinary for secure profile image uploads  
+**Acceptance Criteria**:
+- [ ] Install and configure Cloudinary SDK (@cloudinary/react)
+- [ ] Create secure upload API endpoint (/api/upload/avatar)
+- [ ] Replace avatar URL input with file upload component
+- [ ] Implement drag-and-drop image upload interface
+- [ ] Add image preview and crop functionality
+- [ ] File validation (size, format, dimensions)
+- [ ] Server-side image optimization via Cloudinary
+- [ ] Update ProfileEditForm with upload widget
+- [ ] Progress indicators and loading states
+- [ ] Error handling for upload failures
+
+**Estimated Effort**: 6 hours  
+**Dependencies**: Profile editing system complete
+
+### 5. Mailgun Email Verification 📝
+**Status**: To Do  
+**Description**: Implement email verification system using Mailgun  
+**Acceptance Criteria**:
+- [ ] Install and configure Mailgun SDK (mailgun.js)
+- [ ] Add database fields: email_verified, verification_token, token_expires
+- [ ] Create database migration for email verification
+- [ ] Generate secure verification tokens using crypto
+- [ ] Send verification emails via Mailgun API
+- [ ] Create email verification endpoint (/api/auth/verify-email/:token)
+- [ ] Update registration flow to create unverified users
+- [ ] Block login for unverified email addresses
+- [ ] Add verification status to user interface
+- [ ] Create resend verification email functionality
+- [ ] Design verification email templates
+
+**Estimated Effort**: 8 hours  
 **Dependencies**: Authentication system complete
 
-### 2. Timeline Display ✅
-**Status**: Completed  
-**Description**: Display tweets in chronological timeline  
-**Completed**: July 26, 2025
-**Acceptance Criteria**:
-- ✅ Fetch and display tweets from API (/api/tweets)
-- ✅ Chronological ordering (newest first)
-- ✅ Pagination support (limit/offset parameters)
-- ✅ Empty state for no tweets
-- ✅ Loading skeletons with proper styling
-- ✅ Error handling for failed loads (401, 500)
-- ✅ Authentication-based access control
-
-**Estimated Effort**: 3 hours  
-**Dependencies**: Tweet creation system
-
-### 3. User Profile Pages 🔄
-**Status**: In Progress  
-**Description**: Create user profile pages with tweets  
-**Started**: July 26, 2025
-**Acceptance Criteria**:
-- [ ] Profile header with user info (username, display name, avatar)
-- [ ] Display user's tweets in timeline format
-- [ ] Follower/following counts display
-- [ ] Profile edit functionality
-- [ ] Responsive design for mobile
-- [ ] API endpoint for fetching user tweets (/api/users/:username)
-
-**Estimated Effort**: 4 hours  
-**Dependencies**: Timeline display complete
-
-### 4. Following System 📝
+### 6. Image Upload Functionality (Future) 📝
 **Status**: To Do  
-**Description**: Implement follow/unfollow functionality  
+**Description**: Enable image uploads for tweets using Cloudinary  
 **Acceptance Criteria**:
-- [ ] Follow/unfollow API endpoints
-- [ ] Follow button on profiles
-- [ ] Update follower counts in real-time
-- [ ] Prevent self-following
-- [ ] Timeline filtering (following vs all)
+- [ ] Tweet image upload using existing Cloudinary setup
+- [ ] Image preview in tweet composition form
+- [ ] Multiple image support (up to 4 images)
+- [ ] Responsive image display in timeline
+- [ ] Image compression and optimization
 
 **Estimated Effort**: 4 hours  
-**Dependencies**: User profile pages
+**Dependencies**: Cloudinary profile upload complete
 
 ---
 
 ## Medium Priority Tasks
 
-### 5. Tweet Interactions 📝
+### 5. Enhanced Error Handling 📝
 **Status**: To Do  
-**Description**: Add like functionality to tweets  
+**Description**: Improve error handling and user feedback systems  
 **Acceptance Criteria**:
-- [ ] Like/unlike API endpoints
-- [ ] Like button with count display
-- [ ] Visual feedback for liked state
-- [ ] Update like count in real-time
-- [ ] Prevent duplicate likes
+- [ ] Global error boundaries for React components
+- [ ] User-friendly error messages and toast notifications
+- [ ] Retry mechanisms for failed API requests
+- [ ] Offline state detection and handling
+- [ ] Form validation with detailed feedback
+- [ ] 404 and error page improvements
 
-**Estimated Effort**: 2 hours  
-**Dependencies**: Timeline display complete
+**Estimated Effort**: 4 hours  
+**Dependencies**: Core functionality complete
 
-### 6. Responsive Design Polish 📝
+### 6. Advanced Timeline Features 📝
 **Status**: To Do  
-**Description**: Ensure mobile-first responsive design  
+**Description**: Enhance timeline with advanced filtering and sorting  
 **Acceptance Criteria**:
-- [ ] Mobile-optimized tweet creation
-- [ ] Touch-friendly interactions
-- [ ] Responsive images and media
-- [ ] Landscape/portrait orientations
-- [ ] Tablet optimization
+- [ ] Timeline refresh button with loading states
+- [ ] Tweet sorting options (newest, most liked)
+- [ ] Infinite scroll optimization
+- [ ] Timeline caching for better performance
+- [ ] Pull-to-refresh on mobile
+- [ ] Tweet threading preparation
 
-**Estimated Effort**: 2 hours  
-**Dependencies**: Basic UI layout complete
+**Estimated Effort**: 3 hours  
+**Dependencies**: Timeline and social features complete
 
 ---
 
 ## Low Priority Tasks
 
-### 7. Performance Optimization 📝
+### 7. Analytics Dashboard 📝
 **Status**: To Do  
-**Description**: Optimize loading and rendering performance  
+**Description**: Basic analytics for user engagement  
 **Acceptance Criteria**:
-- [ ] Implement React.memo for components
-- [ ] Optimize database queries with indexes
-- [ ] Add loading states and skeletons
-- [ ] Image optimization for avatars
-- [ ] Bundle size analysis
+- [ ] Tweet performance metrics
+- [ ] Follower growth tracking
+- [ ] Engagement rate calculations
+- [ ] Simple analytics dashboard
+- [ ] Data export functionality
 
-**Estimated Effort**: 2 hours  
-**Dependencies**: Core functionality complete
+**Estimated Effort**: 5 hours  
+**Dependencies**: All core features complete
 
-### 8. Error Handling & UX 📝
+### 8. Accessibility Improvements 📝
 **Status**: To Do  
-**Description**: Enhance error handling and user experience  
+**Description**: Enhance accessibility and WCAG compliance  
 **Acceptance Criteria**:
-- [ ] Global error boundaries
-- [ ] User-friendly error messages
-- [ ] Retry mechanisms for failed requests
-- [ ] Offline state handling
-- [ ] Form validation feedback
+- [ ] Screen reader optimization
+- [ ] Keyboard navigation improvements
+- [ ] High contrast mode support
+- [ ] Focus management for modals
+- [ ] ARIA labels and descriptions
+- [ ] Color contrast compliance
 
-**Estimated Effort**: 2 hours  
-**Dependencies**: Core functionality complete
+**Estimated Effort**: 3 hours  
+**Dependencies**: UI components stable
+
+---
+
+## Completed Sprint 3 Tasks
+
+### ✅ Complete Following/Followers System
+**Status**: Completed  
+**Description**: Full social following functionality with real-time updates  
+**Completed**: August 8, 2025
+
+### ✅ Like/Unlike Functionality
+**Status**: Completed  
+**Description**: Tweet like system with instant feedback  
+**Completed**: August 8, 2025
+
+### ✅ Timeline Filtering
+**Status**: Completed  
+**Description**: Filter between "Following" and "All" tweets  
+**Completed**: August 7, 2025
+
+### ✅ Enhanced Profile Pages
+**Status**: Completed  
+**Description**: Complete user profiles with follow buttons and counts  
+**Completed**: August 6, 2025
+
+### ✅ Profile Editing System
+**Status**: Completed  
+**Description**: Settings page with profile editing functionality  
+**Completed**: August 5, 2025
+
+### ✅ Mobile Responsive Design
+**Status**: Completed  
+**Description**: Full mobile optimization with responsive components  
+**Completed**: August 4, 2025
+
+---
+
+## Completed Sprint 2 Tasks
+
+### ✅ Tweet Creation System
+**Status**: Completed  
+**Description**: Tweet creation with 140-character limit and validation  
+**Completed**: July 26, 2025
+
+### ✅ Timeline Display
+**Status**: Completed  
+**Description**: Chronological tweet timeline with pagination  
+**Completed**: July 26, 2025
+
+### ✅ User Profile Pages
+**Status**: Completed  
+**Description**: User profile pages with tweet history  
+**Completed**: August 1, 2025
+
+### ✅ Basic Following System
+**Status**: Completed  
+**Description**: Core follow/unfollow functionality  
+**Completed**: August 2, 2025
 
 ---
 
@@ -167,25 +261,32 @@
 
 ---
 
-## Sprint Summary
+## Sprint 4 Summary
 
-**Total Tasks**: 8  
-**Total Estimated Hours**: 20  
-**Completed Tasks**: 6  
+**Total Tasks**: 10  
+**Total Estimated Hours**: 49  
+**Completed Tasks**: 0  
 **In Progress**: 0  
 **Blocked Tasks**: 0  
 
 ### Task Dependencies Graph
 ```
-Tweet Creation → Timeline Display → User Profiles → Following System
-       ↓              ↓                 ↓               ↓
-   Interactions   Responsive      Performance      Error Handling
+Search Functionality → Performance Optimization → Analytics Dashboard
+       ↓                       ↓                        ↓
+Cloudinary Upload → Mailgun Verification → Image Uploads (Future)
+       ↓                       ↓                        ↓
+Notifications → Enhanced Error Handling → Accessibility
 ```
 
 ### Risk Assessment
-- **Low Risk**: Responsive design, performance optimization
-- **Medium Risk**: Real-time updates, database performance
-- **High Risk**: None identified
+- **Low Risk**: Performance optimization, accessibility improvements
+- **Medium Risk**: Cloudinary integration, search functionality, email templates
+- **High Risk**: Real-time notifications system, Mailgun email verification, third-party service dependencies
+
+### Previous Sprint Achievements
+- **Sprint 1**: Foundation (100% complete) - Authentication, database, basic UI
+- **Sprint 2**: Core Functionality (100% complete) - Tweet creation, timeline, profiles
+- **Sprint 3**: Social Features (100% complete) - Following, likes, timeline filtering
 
 ### Next Sprint Planning
-Sprint 3 will focus on social features (retweets, replies, notifications) once core tweet functionality is complete.
+Sprint 5 will focus on advanced features (real-time updates, reply system, retweets) once performance and user experience enhancements are complete.

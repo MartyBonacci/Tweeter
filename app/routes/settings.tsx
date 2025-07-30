@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useActionData, useLoaderData, useFetcher, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
+import { useNavigate, useActionData, useLoaderData, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import MobileNav from '../components/MobileNav';
+import { ProfileEditForm } from '../components/ProfileEditForm';
 import { useUser } from '../hooks/useUser';
 import { verifyToken } from '../lib/auth.server';
 import { db } from '../db/drizzle';
 import { users } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
+import { userProfileUpdateSchema } from '../lib/schemas';
+import { validateFormData } from '../lib/validation-middleware';
 
 interface UserData {
   username: string;
@@ -16,30 +19,89 @@ interface UserData {
   avatar?: string;
 }
 
+interface ActionData {
+  error?: string;
+  errors?: Array<{field: string; message: string}>;
+  success?: boolean;
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
-  // Settings page will handle authentication on the client side
-  // This allows navigation without Authorization headers
-  return { user: null };
+  try {
+    // Try to get token from cookie or Authorization header
+    const authHeader = request.headers.get('Authorization');
+    const cookieHeader = request.headers.get('Cookie');
+    
+    let token = '';
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (cookieHeader) {
+      // Try to extract token from cookies if needed
+      const tokenMatch = cookieHeader.match(/token=([^;]+)/);
+      if (tokenMatch) {
+        token = tokenMatch[1];
+      }
+    }
+    
+    // If no token found, return null and let client handle auth
+    // This is normal for initial page loads from client-side routing
+    if (!token) {
+      return { user: null, error: null };
+    }
+    
+    // Verify token and get user data
+    const userPayload = verifyToken(token);
+    
+    // Fetch user data from database
+    const [user] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        display_name: users.display_name,
+        bio: users.bio,
+        avatar_url: users.avatar_url,
+        email: users.email
+      })
+      .from(users)
+      .where(eq(users.id, userPayload.userId))
+      .limit(1);
+    
+    if (!user) {
+      return { user: null, error: 'User not found' };
+    }
+    
+    const userData = {
+      username: user.username,
+      displayName: user.display_name || '',
+      bio: user.bio || '',
+      avatar: user.avatar_url || ''
+    };
+    
+    return { 
+      user: userData, 
+      error: null 
+    };
+  } catch (error) {
+    // Return null user so client can handle auth
+    return { user: null, error: null };
+  }
 }
 
 export default function Settings() {
-  const { user: initialData } = useLoaderData() as { user: UserData };
+  const { user: initialData, error: loaderError } = useLoaderData() as { user: UserData | null; error: string | null };
   const { user, isLoading: isAuthLoading } = useUser();
   const navigate = useNavigate();
-  const fetcher = useFetcher();
+  const actionData = useActionData() as ActionData;
   
-  const [userData, setUserData] = useState<UserData>({
-    username: '',
-    displayName: '',
-    bio: '',
-    avatar: ''
-  });
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
-  
-  const isLoading = fetcher.state === 'submitting';
-  const actionData = fetcher.data as { error?: string; success?: boolean };
-  const error = actionData?.error || null;
-  const success = actionData?.success || false;
+  const [token, setToken] = useState('');
+  const [userData, setUserData] = useState<UserData | null>(initialData);
+  const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+
+  // Set token from localStorage on client side only
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setToken(localStorage.getItem('token') || '');
+    }
+  }, []);
 
   useEffect(() => {
     // Only redirect after auth loading is complete
@@ -52,65 +114,52 @@ export default function Settings() {
       return; // Still loading
     }
 
-    // Fetch user data from API
-    const fetchUserData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-
-        const response = await fetch(`/api/users/${user.username}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
+    // If no user data yet, fetch from API
+    if (!userData) {
+      setIsLoadingUserData(true);
+      const fetchUserData = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          
+          if (!token) {
+            navigate('/login');
+            return;
           }
-        });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data');
+          const response = await fetch(`/api/users/${user.username}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch user data');
+          }
+
+          const data = await response.json();
+          
+          // API returns data.user object with the user info
+          const userInfo = data.user || data;
+          const fetchedUserData = {
+            username: userInfo.username || '',
+            displayName: userInfo.displayName || '',
+            bio: userInfo.bio || '',
+            avatar: userInfo.avatar || ''
+          };
+          
+          setUserData(fetchedUserData);
+          
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        } finally {
+          setIsLoadingUserData(false);
         }
+      };
 
-        const data = await response.json();
-        setUserData({
-          username: data.username || '',
-          displayName: data.displayName || '',
-          bio: data.bio || '',
-          avatar: data.avatar || ''
-        });
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setIsLoadingUser(false);
-      }
-    };
-
-    fetchUserData();
-  }, [user, navigate]);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
+      fetchUserData();
     }
+  }, [user, navigate, userData, isAuthLoading]);
 
-    // Store token in a cookie or use client action
-    const formData = new FormData();
-    formData.append('displayName', userData.displayName);
-    formData.append('username', userData.username);
-    formData.append('bio', userData.bio || '');
-    formData.append('avatar', userData.avatar || '');
-    formData.append('token', token); // Pass token as form field
-
-    fetcher.submit(formData, {
-      method: 'POST',
-      action: '/settings',
-      encType: 'application/x-www-form-urlencoded'
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,111 +174,20 @@ export default function Settings() {
           </div>
 
           <div className="max-w-lg mx-auto p-4">
-            {(isLoadingUser || isAuthLoading) ? (
+            {(isLoadingUserData || isAuthLoading || !userData) ? (
               <div className="flex justify-center items-center py-8">
-                <div className="text-gray-500">Loading...</div>
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                  <div className="text-gray-500">Loading your profile...</div>
+                </div>
               </div>
             ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
-              )}
-              
-              {success && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-                  Profile updated successfully!
-                </div>
-              )}
-
-              {/* Display Name */}
-              <div>
-                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Display name
-                </label>
-                <input
-                  type="text"
-                  id="displayName"
-                  name="displayName"
-                  value={userData.displayName}
-                  onChange={(e) => setUserData({ ...userData, displayName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  maxLength={50}
-                  required
-                />
-              </div>
-
-              {/* Username */}
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value={userData.username}
-                  onChange={(e) => setUserData({ ...userData, username: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  pattern="[a-zA-Z0-9_]+"
-                  title="Username can only contain letters, numbers, and underscores"
-                  maxLength={15}
-                  required
-                />
-              </div>
-
-              {/* Bio */}
-              <div>
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
-                  Bio
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  value={userData.bio}
-                  onChange={(e) => setUserData({ ...userData, bio: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  maxLength={160}
-                  placeholder="Tell us about yourself..."
-                />
-              </div>
-
-              {/* Avatar URL */}
-              <div>
-                <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-2">
-                  Avatar URL
-                </label>
-                <input
-                  type="url"
-                  id="avatar"
-                  name="avatar"
-                  value={userData.avatar}
-                  onChange={(e) => setUserData({ ...userData, avatar: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://example.com/avatar.jpg"
-                />
-              </div>
-
-              <div className="flex space-x-4">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Saving...' : 'Save changes'}
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => navigate(`/users/${user?.username || ''}`)}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+              <ProfileEditForm
+                userData={userData}
+                token={token}
+                actionData={actionData}
+                onCancel={() => navigate(`/users/${user?.username || ''}`)}
+              />
             )}
           </div>
         </main>
@@ -258,26 +216,14 @@ export async function action({ request }: ActionFunctionArgs) {
       return Response.json({ error: 'Invalid or expired token' }, { status: 401 });
     }
 
-    const displayName = formData.get('displayName') as string;
-    const username = formData.get('username') as string;
-    const bio = formData.get('bio') as string;
-    const avatar = formData.get('avatar') as string;
-
-    if (!displayName || !username) {
-      return Response.json({ error: 'Display name and username are required' }, { status: 400 });
+    // Validate form data using Zod schema
+    const validation = validateFormData(formData, userProfileUpdateSchema);
+    
+    if (!validation.isValid) {
+      return Response.json({ errors: validation.errors }, { status: 400 });
     }
-
-    if (username.length > 15) {
-      return Response.json({ error: 'Username must be 15 characters or less' }, { status: 400 });
-    }
-
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      return Response.json({ error: 'Username can only contain letters, numbers, and underscores' }, { status: 400 });
-    }
-
-    if (bio && bio.length > 160) {
-      return Response.json({ error: 'Bio must be 160 characters or less' }, { status: 400 });
-    }
+    
+    const { displayName, username, bio, avatar } = validation.data;
 
     // Check if username is already taken by another user
     const existingUsers = await db
@@ -287,8 +233,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const conflictingUser = existingUsers.find(u => u.id !== userPayload.userId);
     if (conflictingUser) {
-      return Response.json({ error: 'Username is already taken' }, { status: 400 });
- }
+      return Response.json({ 
+        errors: [{ field: 'username', message: 'Username is already taken' }] 
+      }, { status: 400 });
+    }
 
     await db
       .update(users)

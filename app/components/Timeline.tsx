@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { useFetcher } from 'react-router';
 import { Tweet } from './Tweet';
 import { TweetForm } from './TweetForm';
+import { TimelineSkeleton } from './TweetSkeleton';
 
 interface TweetData {
   tweet: {
@@ -19,14 +20,14 @@ interface TweetData {
   likeCount: number;
 }
 
-export function Timeline() {
+export const Timeline = memo(function Timeline() {
   const [tweets, setTweets] = useState<TweetData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'for-you' | 'following'>('for-you');
   const fetcher = useFetcher();
 
-  const fetchTweets = async () => {
+  const fetchTweets = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -58,7 +59,7 @@ export function Timeline() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -78,24 +79,27 @@ export function Timeline() {
     }
   }, [fetcher.data]);
 
+  const memoizedTweets = useMemo(() => 
+    tweets.map(({ tweet, user, likeCount }) => (
+      <Tweet key={tweet.id} tweet={{
+        id: tweet.id,
+        content: tweet.content,
+        created_at: tweet.created_at,
+        user: {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          avatar: user.avatar || undefined
+        },
+        likeCount
+      }} />
+    )), [tweets]);
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto">
         <TweetForm />
-        <div className="border-b border-gray-200 p-4">
-          <div className="animate-pulse">
-            <div className="flex space-x-3">
-              <div className="h-12 w-12 rounded-full bg-gray-300"></div>
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-300 rounded w-1/4"></div>
-                <div className="space-y-2">
-                  <div className="h-4 bg-gray-300 rounded"></div>
-                  <div className="h-4 bg-gray-300 rounded w-5/6"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <TimelineSkeleton count={5} />
       </div>
     );
   }
@@ -162,21 +166,8 @@ export function Timeline() {
           </p>
         </div>
       ) : (
-        tweets.map(({ tweet, user, likeCount }) => (
-          <Tweet key={tweet.id} tweet={{
-            id: tweet.id,
-            content: tweet.content,
-            created_at: tweet.created_at,
-            user: {
-              id: user.id,
-              username: user.username,
-              displayName: user.displayName,
-              avatar: user.avatar || undefined
-            },
-            likeCount
-          }} />
-        ))
+        memoizedTweets
       )}
     </div>
   );
-}
+});

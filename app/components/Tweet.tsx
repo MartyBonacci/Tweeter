@@ -2,6 +2,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import React from 'react';
+import { Avatar } from './Avatar';
 
 interface TweetProps {
   tweet: {
@@ -86,21 +87,11 @@ export const Tweet = React.memo(function Tweet({ tweet }: TweetProps) {
   return (
     <div className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors">
       <div className="flex space-x-3">
-        <div className="flex-shrink-0">
-          {tweet.user.avatar ? (
-            <img
-              src={tweet.user.avatar}
-              alt={tweet.user.displayName}
-              className="h-12 w-12 rounded-full"
-            />
-          ) : (
-            <div className="h-12 w-12 rounded-full bg-gray-300 flex items-center justify-center">
-              <span className="text-lg font-semibold text-gray-600">
-                {tweet.user.displayName?.charAt(0).toUpperCase() || tweet.user.username?.charAt(0).toUpperCase() || 'U'}
-              </span>
-            </div>
-          )}
-        </div>
+        <Avatar 
+          src={tweet.user.avatar}
+          alt={tweet.user.displayName || tweet.user.username}
+          size="md"
+        />
         
         <div className="flex-1">
           <div className="flex items-center space-x-1">

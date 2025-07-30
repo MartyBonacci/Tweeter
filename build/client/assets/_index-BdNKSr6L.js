@@ -1,0 +1,1 @@
+import{w as o,u as n,r as a}from"./chunk-C37GKA54-DsslrCQ8.js";import"./_commonjsHelpers-CE1G-McA.js";const c=o(function(){const t=n();return a.useEffect(()=>{const e=localStorage.getItem("token");t(e?"/home":"/login")},[t]),null});export{c as default};

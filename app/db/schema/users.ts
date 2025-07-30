@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, varchar, boolean } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 
 import { relations } from 'drizzle-orm';
@@ -14,6 +14,9 @@ export const users = pgTable('users', {
   display_name: varchar('display_name', { length: 100 }),
   bio: text('bio'),
   avatar_url: text('avatar_url'),
+  email_verified: boolean('email_verified').default(false).notNull(),
+  verification_token: text('verification_token'),
+  token_expires: timestamp('token_expires'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
