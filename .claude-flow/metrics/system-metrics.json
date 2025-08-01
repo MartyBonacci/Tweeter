@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": 1754014386546,
+    "memoryTotal": 11658694656,
+    "memoryUsed": 6884040704,
+    "memoryFree": 4774653952,
+    "memoryUsagePercent": 59.04641048693402,
+    "memoryEfficiency": 40.95358951306598,
+    "cpuCount": 0,
+    "cpuLoad": null,
+    "platform": "android",
+    "uptime": 1185480
+  },
+  {
+    "timestamp": 1754014416559,
+    "memoryTotal": 11658694656,
+    "memoryUsed": 6903148544,
+    "memoryFree": 4755546112,
+    "memoryUsagePercent": 59.21030396355206,
+    "memoryEfficiency": 40.78969603644794,
+    "cpuCount": 0,
+    "cpuLoad": null,
+    "platform": "android",
+    "uptime": 1185510
+  }
+]
