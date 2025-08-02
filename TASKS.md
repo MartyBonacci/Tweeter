@@ -41,21 +41,28 @@
 
 ## Sprint 1.3: API Foundation (Days 6-7)
 
-### API Tasks
-- [ ] Setup React Router 7 API routes
-- [ ] Create Zod validation schemas
-- [ ] Implement error handling middleware
-- [ ] Setup authentication endpoints
-- [ ] Configure environment variables
+### Remix Foundation Tasks
+- [ ] Create routes.ts for programmatic routing
+- [ ] Implement loader functions for data fetching
+- [ ] Implement action functions for mutations
+- [ ] Create Form components with validation
+- [ ] Setup authentication with Remix sessions
+- [ ] Configure error boundaries and handling
 
-### API Files to Create
-- [ ] app/routes/api/auth/login.ts
-- [ ] app/routes/api/auth/register.ts
-- [ ] app/routes/api/tweets/index.ts
-- [ ] app/routes/api/users/index.ts
-- [ ] app/lib/validation/auth.ts
-- [ ] app/lib/validation/tweets.ts
-- [ ] app/lib/middleware/errorHandler.ts
+### Remix Files to Create
+- [ ] app/routes.ts (programmatic routing)
+- [ ] app/routes/login.tsx (with Form component)
+- [ ] app/routes/register.tsx (with Form component)
+- [ ] app/routes/logout.tsx (action-only route)
+- [ ] app/routes/timeline.tsx (loader + action)
+- [ ] app/routes/settings.tsx (user settings)
+- [ ] app/routes/_layout.tsx (shared layout)
+- [ ] app/routes/$username.tsx (user profile)
+- [ ] app/routes/tweets/$id.tsx (tweet detail)
+- [ ] app/lib/session.server.ts (session management)
+- [ ] app/lib/auth.server.ts (authentication utilities)
+- [ ] app/lib/validation/auth.ts (Zod schemas)
+- [ ] app/lib/validation/tweets.ts (Zod schemas)
 
 ## Daily Task Updates
 

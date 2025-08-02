@@ -9,4 +9,15 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./tests/setup.ts"],
   },
+  optimizeDeps: {
+    exclude: ['@node-rs/argon2', 'uuidv7']
+  },
+  build: {
+    rollupOptions: {
+      external: ['@node-rs/argon2-wasm32-wasi', '@node-rs/argon2', 'uuidv7']
+    }
+  },
+  ssr: {
+    external: ['@node-rs/argon2', 'uuidv7']
+  }
 });

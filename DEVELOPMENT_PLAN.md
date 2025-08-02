@@ -19,12 +19,13 @@
 - [ ] Implement UUIDv7 primary keys
 - [ ] Create initial database migrations
 
-#### Sprint 1.3: API Foundation (Days 6-7)
-- [ ] Setup React Router 7 API routes
-- [ ] Implement Zod validation schemas
-- [ ] Create error handling middleware
-- [ ] Setup authentication endpoints
-- [ ] Configure environment variables
+#### Sprint 1.3: Remix Foundation (Days 6-7)
+- [ ] Configure routes.ts for programmatic routing
+- [ ] Implement loader functions for data fetching
+- [ ] Implement action functions for mutations
+- [ ] Create Form components with validation
+- [ ] Setup authentication with Remix sessions
+- [ ] Configure error boundaries and handling
 
 ### Sprint 2: Core Features (Week 3-4)
 **Goal**: Implement essential tweeting functionality
@@ -141,32 +142,37 @@ CREATE TABLE likes (
 );
 ```
 
-### API Endpoints
+### Remix Routes & Actions
 ```
-# Authentication
-POST   /api/auth/register
-POST   /api/auth/login
-POST   /api/auth/logout
-POST   /api/auth/refresh
-POST   /api/auth/forgot-password
-POST   /api/auth/reset-password
+# Authentication Routes
+GET    /login              → Login page with Form
+POST   /login              → Action function for authentication
+GET    /register           → Registration page with Form  
+POST   /register           → Action function for user creation
+POST   /logout             → Action function for session cleanup
 
-# Users
-GET    /api/users/:id
-PUT    /api/users/:id
-GET    /api/users/:username
-POST   /api/users/:id/follow
-DELETE /api/users/:id/follow
+# Timeline & Feed
+GET    /timeline           → Home timeline with loader
+POST   /timeline           → Tweet creation via Form
+GET    /explore            → Trending tweets with loader
 
-# Tweets
-GET    /api/tweets
-POST   /api/tweets
-GET    /api/tweets/:id
-PUT    /api/tweets/:id
-DELETE /api/tweets/:id
-GET    /api/tweets/user/:userId
-POST   /api/tweets/:id/like
-DELETE /api/tweets/:id/like
+# User Routes
+GET    /:username         → User profile with loader
+POST   /:username/follow   → Follow/unfollow action
+GET    /:username/tweets   → User's tweets with loader
+POST   /:username/tweets   → Tweet creation via Form
+
+# Tweet Routes  
+GET    /tweets/:id        → Individual tweet with loader
+POST   /tweets/:id        → Reply/quote action
+POST   /tweets/:id/like   → Like/unlike action
+POST   /tweets/:id/delete → Delete action (with confirmation)
+
+# Settings & Profile
+GET    /settings          → Settings page with loader
+POST   /settings          → Update profile action
+GET    /settings/account  → Account settings with loader
+POST   /settings/account  → Update account action
 ```
 
 ### Development Standards

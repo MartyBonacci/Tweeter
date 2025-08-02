@@ -13,15 +13,61 @@ type Pages = {
   "/": {
     params: {};
   };
+  "/register": {
+    params: {};
+  };
+  "/login": {
+    params: {};
+  };
+  "/logout": {
+    params: {};
+  };
+  "/timeline": {
+    params: {};
+  };
+  "/settings": {
+    params: {};
+  };
+  "/tweets": {
+    params: {};
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/";
+    page: "/" | "/register" | "/login" | "/logout" | "/timeline" | "/settings" | "/tweets";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
     page: "/";
+  };
+  "routes/register.tsx": {
+    id: "routes/register";
+    page: "/register";
+  };
+  "routes/login.tsx": {
+    id: "routes/login";
+    page: "/login";
+  };
+  "routes/logout.tsx": {
+    id: "routes/logout";
+    page: "/logout";
+  };
+  "routes/_layout.tsx": {
+    id: "routes/_layout";
+    page: "/timeline" | "/settings";
+  };
+  "routes/timeline.tsx": {
+    id: "routes/timeline";
+    page: "/timeline";
+  };
+  "routes/settings.tsx": {
+    id: "routes/settings";
+    page: "/settings";
+  };
+  "routes/tweets.tsx": {
+    id: "routes/tweets";
+    page: "/tweets";
   };
 };

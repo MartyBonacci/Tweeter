@@ -1,0 +1,199 @@
+import { Form, Link, useActionData, useLoaderData } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
+import { db } from "~/lib/db/connection";
+import { tweets, users } from "~/lib/db/schema";
+import { desc, eq } from "drizzle-orm";
+import { uuidv7 } from "uuidv7";
+import { requireAuth } from "~/lib/session.server";
+
+const tweetSchema = z.object({
+  content: z
+    .string()
+    .min(1, "Tweet content is required")
+    .max(280, "Tweet must be 280 characters or less"),
+});
+
+export async function loader({ request }: { request: Request }) {
+  const user = await requireAuth(request);
+  
+  // Get user's tweets
+  const userTweets = await db
+    .select({
+      id: tweets.id,
+      content: tweets.content,
+      createdAt: tweets.createdAt,
+      user: {
+        id: users.id,
+        username: users.username,
+        name: users.displayName,
+      }
+    })
+    .from(tweets)
+    .innerJoin(users, eq(tweets.userId, users.id))
+    .where(eq(tweets.userId, user.userId))
+    .orderBy(desc(tweets.createdAt))
+    .limit(50);
+
+  return { tweets: userTweets, user };
+}
+
+export async function action({ request }: { request: Request }) {
+  const user = await requireAuth(request);
+  const formData = await request.formData();
+  const data = Object.fromEntries(formData);
+  
+  const validation = tweetSchema.safeParse(data);
+  
+  if (!validation.success) {
+    return Response.json(
+      { 
+        error: "Validation failed", 
+        errors: validation.error.flatten(),
+        values: data
+      },
+      { status: 400 }
+    );
+  }
+  
+  const { content } = validation.data;
+  
+  try {
+    const newTweet = await db.insert(tweets).values({
+      id: uuidv7(),
+      userId: user.userId,
+      content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning({
+      id: tweets.id,
+      content: tweets.content,
+      createdAt: tweets.createdAt,
+    });
+
+    return Response.json({
+      success: true,
+      message: "Tweet posted successfully!",
+      tweet: newTweet[0]
+    });
+    
+  } catch (error) {
+    console.error("Tweet creation error:", error);
+    return Response.json(
+      { 
+        error: "Failed to create tweet",
+        errors: {},
+        values: data
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export default function TweetsPage() {
+  const { tweets, user } = useLoaderData() as { tweets: any[], user: any };
+  const actionData = useActionData() as any;
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (actionData?.errors?.fieldErrors?.content) {
+      contentRef.current?.focus();
+    }
+    
+    if (actionData?.success) {
+      setShowSuccess(true);
+      const timer = setTimeout(() => setShowSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionData]);
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white shadow rounded-lg p-6 mb-6">
+        {showSuccess && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+            <p className="text-sm text-green-800">✅ Tweet posted successfully!</p>
+          </div>
+        )}
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">Create Tweet</h1>
+        <Form method="post" className="space-y-4">
+          <div>
+            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
+              What's happening?
+            </label>
+            <textarea
+              ref={contentRef}
+              id="content"
+              name="content"
+              rows={4}
+              maxLength={280}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Share your thoughts..."
+              defaultValue={actionData?.success ? "" : actionData?.values?.content || ""}
+              aria-invalid={actionData?.errors?.fieldErrors?.content ? "true" : "false"}
+              aria-describedby="content-error"
+            />
+            {actionData?.errors?.fieldErrors?.content && (
+              <p id="content-error" className="mt-1 text-sm text-red-600">
+                {actionData.errors.fieldErrors.content[0]}
+              </p>
+            )}
+            <div className="text-sm text-gray-500 mt-1">
+              {280 - (actionData?.values?.content?.length || 0)} characters remaining
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <button
+              type="submit"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Tweet
+            </button>
+          </div>
+        </Form>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Your Tweets</h2>
+        {tweets.map((tweet) => (
+          <div key={tweet.id} className="bg-white shadow rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                  {tweet.user.name[0]?.toUpperCase()}
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center space-x-1 mb-2">
+                  <p className="text-sm font-medium text-gray-900">{tweet.user.name}</p>
+                  <span className="text-sm text-gray-500">·</span>
+                  <time className="text-sm text-gray-500">
+                    {new Date(tweet.createdAt).toLocaleDateString()}
+                  </time>
+                </div>
+                <p className="text-sm text-gray-900 mb-2">{tweet.content}</p>
+                <div className="flex space-x-4">
+                  <Link 
+                    to={`/tweets/${tweet.id}`}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    View
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        
+        {tweets.length === 0 && (
+          <div className="bg-white shadow rounded-lg p-6 text-center">
+            <p className="text-gray-500">No tweets yet. Create your first tweet above!</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
