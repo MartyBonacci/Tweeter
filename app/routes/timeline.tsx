@@ -110,23 +110,12 @@ export default function TimelinePage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Welcome, {user.name}!</h1>
-        <Link
-          to="/tweets"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-        >
-          Create new tweet
-        </Link>
-      </div>
-
         <div className="bg-white shadow rounded-lg p-6 mb-6">
             {showSuccess && (
                 <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
                     <p className="text-sm text-green-800">✅ Tweet posted successfully!</p>
                 </div>
             )}
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Create Tweet</h1>
             <Form method="post" className="space-y-4">
                 <div>
                     <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
