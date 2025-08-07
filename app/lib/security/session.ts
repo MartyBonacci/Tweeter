@@ -1,4 +1,4 @@
-import { createId } from 'uuidv7';
+import { uuidv7 } from 'uuidv7';
 
 export interface SessionData {
   userId: string;
@@ -38,8 +38,8 @@ const sessionStore = new Map<string, SessionData>();
 export async function createSession(
   userData: Omit<SessionData, 'csrfToken' | 'createdAt' | 'lastActivity'>
 ): Promise<string> {
-  const sessionId = createId();
-  const csrfToken = createId();
+  const sessionId = uuidv7();
+  const csrfToken = uuidv7();
   
   const sessionData: SessionData = {
     ...userData,
@@ -124,12 +124,12 @@ export async function refreshSession(sessionId: string): Promise<string | null> 
   }
   
   // Create new session with same data
-  const newSessionId = createId();
+  const newSessionId = uuidv7();
   const newSessionData: SessionData = {
     ...session,
     createdAt: Date.now(),
     lastActivity: Date.now(),
-    csrfToken: createId(), // Generate new CSRF token
+    csrfToken: uuidv7(), // Generate new CSRF token
   };
   
   sessionStore.set(newSessionId, newSessionData);
@@ -142,7 +142,7 @@ export async function refreshSession(sessionId: string): Promise<string | null> 
  * Generate secure session ID
  */
 export function generateSessionId(): string {
-  return createId();
+  return uuidv7();
 }
 
 /**

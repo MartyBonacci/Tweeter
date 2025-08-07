@@ -1,15 +1,7 @@
 import { Form, Link, useActionData } from "react-router";
-import { z } from "zod";
-import { db } from "~/lib/db/connection";
-import { users } from "~/lib/db/schema";
-import { verifyPassword } from "~/lib/auth/password";
-import { eq } from "drizzle-orm";
+import { loginSchema } from "~/validators/auth.validator";
+import { AuthService } from "~/services/auth.service";
 import { createUserSession, getUserSession } from "~/lib/session.server";
-
-const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
-});
 
 export async function loader({ request }: { request: Request }) {
   const user = await getUserSession(request);
@@ -29,23 +21,18 @@ export async function action({ request }: { request: Request }) {
   const { username, password } = validation.data;
   
   try {
-    const user = await db.select().from(users).where(eq(users.username, username)).limit(1);
-    if (user.length === 0) {
-      return Response.json({ error: "Invalid credentials", values: data }, { status: 401 });
-    }
+    const loginData = { username, password };
     
-    const isValid = await verifyPassword(password, user[0].password);
-    if (!isValid) {
-      return Response.json({ error: "Invalid credentials", values: data }, { status: 401 });
-    }
+    const { user } = await AuthService.login(loginData);
     
     return createUserSession(
-      { userId: user[0].id, username: user[0].username, email: user[0].email },
+      { userId: user.id, username: user.username, email: user.email },
       "/timeline"
     );
     
-  } catch (error) {
-    return Response.json({ error: "Server error", values: data }, { status: 500 });
+  } catch (error: any) {
+    const errorMessage = error.message || "Invalid credentials";
+    return Response.json({ error: errorMessage, values: data }, { status: 401 });
   }
 }
 

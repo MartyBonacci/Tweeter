@@ -1,7 +1,7 @@
 import { db } from '../connection';
 import { users, tweets, follows, likes } from '../schema';
 import { hashPassword } from '../../auth/password';
-import { createId } from 'uuidv7';
+import { uuidv7 } from 'uuidv7';
 
 const sampleUsers = [
   {
@@ -47,7 +47,7 @@ async function seedUsers() {
 
   for (const userData of sampleUsers) {
     const user = await db.insert(users).values({
-      id: createId(),
+      id: uuidv7(),
       username: userData.username,
       email: userData.email,
       name: userData.name,
@@ -71,7 +71,7 @@ async function seedTweets(createdUsers: any[]) {
     const user = createdUsers[i % createdUsers.length];
     
     await db.insert(tweets).values({
-      id: createId(),
+      id: uuidv7(),
       userId: user.id,
       content: sampleTweets[i],
       createdAt: new Date(Date.now() - (i * 3600000)), // Stagger creation times
@@ -91,7 +91,7 @@ async function seedFollows(createdUsers: any[]) {
     const followee = createdUsers[(i + 1) % createdUsers.length];
     
     await db.insert(follows).values({
-      id: createId(),
+      id: uuidv7(),
       followerId: follower.id,
       followeeId: followee.id,
       createdAt: new Date(),
@@ -113,7 +113,7 @@ async function seedLikes(createdUsers: any[], tweets: any[]) {
     const user = createdUsers[i % createdUsers.length];
     
     await db.insert(likes).values({
-      id: createId(),
+      id: uuidv7(),
       userId: user.id,
       tweetId: tweet.id,
       createdAt: new Date(),

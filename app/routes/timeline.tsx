@@ -1,38 +1,14 @@
 import { Form, Link, useActionData, useLoaderData } from "react-router";
 import { useEffect, useRef, useState } from "react";
-import { db } from "~/lib/db/connection";
-import { tweets, users } from "~/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
 import { requireAuth } from "~/lib/session.server";
-import {uuidv7} from "uuidv7";
-import {z} from "zod";
-
-const tweetSchema = z.object({
-    content: z
-        .string()
-        .min(1, "Tweet content is required")
-        .max(140, "Tweet must be 140 characters or less"),
-});
+import { TweetService } from "~/services/tweet.service";
+import { tweetSchema } from "~/validators/tweet.validator";
 
 export async function loader({ request }: { request: Request }) {
   const user = await requireAuth(request);
   
-  // Get timeline tweets (for now, all tweets)
-  const timelineTweets = await db
-    .select({
-      id: tweets.id,
-      content: tweets.content,
-      createdAt: tweets.createdAt,
-      user: {
-        id: users.id,
-        username: users.username,
-        name: users.displayName,
-      }
-    })
-    .from(tweets)
-    .innerJoin(users, eq(tweets.userId, users.id))
-    .orderBy(desc(tweets.createdAt))
-    .limit(50);
+  // Get timeline tweets using TweetService
+  const timelineTweets = await TweetService.getTimeline(user.userId, 50, 0);
 
   return { tweets: timelineTweets, user };
 }
@@ -58,22 +34,19 @@ export async function action({ request }: { request: Request }) {
     const { content } = validation.data;
 
     try {
-        const newTweet = await db.insert(tweets).values({
-            id: uuidv7(),
+        const newTweet = await TweetService.create({
             userId: user.userId,
             content,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        }).returning({
-            id: tweets.id,
-            content: tweets.content,
-            createdAt: tweets.createdAt,
         });
 
         return Response.json({
             success: true,
             message: "Tweet posted successfully!",
-            tweet: newTweet[0]
+            tweet: {
+                id: newTweet.id,
+                content: newTweet.content,
+                createdAt: newTweet.createdAt,
+            }
         });
 
     } catch (error) {

@@ -1,18 +1,7 @@
 import { Form, Link, useActionData } from "react-router";
-import { z } from "zod";
-import { db } from "~/lib/db/connection";
-import { users } from "~/lib/db/schema";
-import { hashPassword } from "~/lib/auth/password";
-import { uuidv7 } from "uuidv7";
-import { eq } from "drizzle-orm";
+import { registerSchema } from "~/validators/auth.validator";
+import { AuthService } from "~/services/auth.service";
 import { createUserSession, getUserSession } from "~/lib/session.server";
-
-const registerSchema = z.object({
-  username: z.string().min(3).max(20),
-  email: z.string().email(),
-  name: z.string().min(1).max(100),
-  password: z.string().min(8).max(128),
-});
 
 export async function loader({ request }: { request: Request }) {
   const user = await getUserSession(request);
@@ -32,33 +21,23 @@ export async function action({ request }: { request: Request }) {
   const { username, email, name, password } = validation.data;
   
   try {
-    const existing = await db.select().from(users).where(eq(users.username, username)).limit(1);
-    if (existing.length > 0) {
-      return Response.json({ error: "Username taken", values: data }, { status: 400 });
-    }
-    
-    const existingEmail = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (existingEmail.length > 0) {
-      return Response.json({ error: "Email registered", values: data }, { status: 400 });
-    }
-    
-    const hashed = await hashPassword(password);
-    const user = await db.insert(users).values({
-      id: uuidv7(),
+    const registerData = {
       username,
       email,
-      displayName: name,
-      passwordHash: hashed,
-    }).returning({ id: users.id, username: users.username, email: users.email });
+      name,
+      password,
+    };
+    
+    const { user } = await AuthService.register(registerData);
     
     return createUserSession(
-      { userId: user[0].id, username: user[0].username, email: user[0].email, isAdmin: false },
+      { userId: user.id, username: user.username, email: user.email },
       "/timeline"
     );
     
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Registration failed';
-    return Response.json({ error: errorMessage, values: data }, { status: 500 });
+  } catch (error: any) {
+    const errorMessage = error.message || 'Registration failed';
+    return Response.json({ error: errorMessage, values: data }, { status: 400 });
   }
 }
 

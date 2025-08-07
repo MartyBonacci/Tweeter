@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { createId } from 'uuidv7';
+import { uuidv7 } from 'uuidv7';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -33,7 +33,7 @@ export async function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp
 }
 
 export async function generateRefreshToken(userId: string) {
-  const tokenId = createId();
+  const tokenId = uuidv7();
   
   return await new SignJWT({ userId, tokenId })
     .setProtectedHeader({ alg: 'HS256' })

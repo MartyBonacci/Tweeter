@@ -4,7 +4,7 @@ import { db } from '~/lib/db/connection';
 import { follows, users } from '~/lib/db/schema';
 import { requireAuth } from '~/lib/middleware/auth';
 import { rateLimit } from '~/lib/middleware/rate-limit';
-import { createId } from 'uuidv7';
+import { uuidv7 } from 'uuidv7';
 import { eq, and } from 'drizzle-orm';
 
 const followRateLimit = rateLimit({
@@ -109,7 +109,7 @@ export const action = followRateLimit(
         }
 
         await db.insert(follows).values({
-          id: createId(),
+          id: uuidv7(),
           followerId: currentUser.id,
           followeeId: targetUserId,
           createdAt: new Date(),

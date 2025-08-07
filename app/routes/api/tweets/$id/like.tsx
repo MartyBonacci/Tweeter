@@ -4,7 +4,7 @@ import { db } from '~/lib/db/connection';
 import { likes, tweets, users } from '~/lib/db/schema';
 import { requireAuth } from '~/lib/middleware/auth';
 import { rateLimit } from '~/lib/middleware/rate-limit';
-import { createId } from 'uuidv7';
+import { uuidv7 } from 'uuidv7';
 import { eq, and, desc } from 'drizzle-orm';
 
 const likeRateLimit = rateLimit({
@@ -12,44 +12,38 @@ const likeRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
 });
 
+import { ResponseUtil } from '~/utils/response.util';
+import { handleError } from '~/utils/error.util';
+import { TweetService } from '~/services/tweet.service';
+import { LikeService } from '~/services/like.service';
+
 export async function loader({ params }: LoaderFunctionArgs) {
   try {
     const tweetId = params.id;
     
     if (!tweetId) {
-      return json({ error: 'Tweet ID is required' }, { status: 400 });
+      return ResponseUtil.error('Tweet ID is required', 400);
     }
 
     // Check if tweet exists
-    const tweetExists = await db
-      .select({ id: tweets.id })
-      .from(tweets)
-      .where(eq(tweets.id, tweetId))
-      .limit(1);
-
-    if (tweetExists.length === 0) {
-      return json({ error: 'Tweet not found' }, { status: 404 });
+    const tweet = await TweetService.findById(tweetId);
+    if (!tweet) {
+      return ResponseUtil.notFound('Tweet');
     }
 
-    const likers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        name: users.name,
-        createdAt: likes.createdAt,
-      })
-      .from(likes)
-      .innerJoin(users, eq(likes.userId, users.id))
-      .where(eq(likes.tweetId, tweetId))
-      .orderBy(desc(likes.createdAt));
+    const count = await LikeService.getLikesCount(tweetId);
 
-    return json({
-      likers,
-      count: likers.length,
+    return ResponseUtil.success({
+      count,
+      tweet: {
+        id: tweet.id,
+        content: tweet.content,
+        user: tweet.user,
+      },
     });
   } catch (error) {
-    console.error('Error fetching tweet likes:', error);
-    return json({ error: 'Internal server error' }, { status: 500 });
+    const appError = handleError(error);
+    return ResponseUtil.error(appError.message, appError.statusCode);
   }
 }
 
@@ -57,63 +51,28 @@ export const action = likeRateLimit(
   requireAuth(async ({ request, params }) => {
     try {
       const tweetId = params.id;
-      const currentUser = (request as any).user;
+      const user = (request as any).user;
       
-      if (!tweetId || !currentUser?.id) {
-        return json({ error: 'Tweet ID is required' }, { status: 400 });
-      }
-
-      // Check if tweet exists
-      const tweetExists = await db
-        .select({ id: tweets.id })
-        .from(tweets)
-        .where(eq(tweets.id, tweetId))
-        .limit(1);
-
-      if (tweetExists.length === 0) {
-        return json({ error: 'Tweet not found' }, { status: 404 });
+      if (!tweetId || !user?.id) {
+        return ResponseUtil.error('Tweet ID is required', 400);
       }
 
       const method = request.method;
 
       if (method === 'POST') {
-        // Check if already liked
-        const existingLike = await db
-          .select()
-          .from(likes)
-          .where(and(eq(likes.userId, currentUser.id), eq(likes.tweetId, tweetId)))
-          .limit(1);
-
-        if (existingLike.length > 0) {
-          return json({ error: 'Already liked this tweet' }, { status: 400 });
-        }
-
-        await db.insert(likes).values({
-          id: createId(),
-          userId: currentUser.id,
-          tweetId: tweetId,
-          createdAt: new Date(),
-        });
-
-        return json({ message: 'Successfully liked tweet' }, { status: 201 });
+        const result = await LikeService.like(tweetId, user.id);
+        return ResponseUtil.created(result);
 
       } else if (method === 'DELETE') {
-        const deleted = await db
-          .delete(likes)
-          .where(and(eq(likes.userId, currentUser.id), eq(likes.tweetId, tweetId)));
-
-        if (deleted.count === 0) {
-          return json({ error: 'Not liked this tweet' }, { status: 400 });
-        }
-
-        return json({ message: 'Successfully unliked tweet' });
+        const result = await LikeService.unlike(tweetId, user.id);
+        return ResponseUtil.success(result);
       }
 
-      return json({ error: 'Method not allowed' }, { status: 405 });
+      return ResponseUtil.error('Method not allowed', 405);
 
     } catch (error) {
-      console.error('Error handling like action:', error);
-      return json({ error: 'Internal server error' }, { status: 500 });
+      const appError = handleError(error);
+      return ResponseUtil.error(appError.message, appError.statusCode);
     }
   })
 );

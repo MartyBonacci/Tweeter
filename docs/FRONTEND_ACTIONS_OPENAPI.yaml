@@ -1,0 +1,892 @@
+openapi: 3.0.0
+info:
+  title: Tweeter Frontend Actions API
+  version: 1.0.0
+  description: |
+    Comprehensive API documentation for frontend actions in the Tweeter application.
+    This API provides authentication, tweet management, user operations, and timeline
+    functionality with service layer architecture and modern validation patterns.
+  
+    ## Authentication
+    This API uses cookie-based authentication with JWT tokens. After successful login,
+    an HTTP-only cookie is set containing the access token.
+    
+    ## Rate Limiting
+    - Authentication endpoints: 5 requests per 15 minutes
+    - Tweet creation: 10 tweets per 15 minutes
+    - General API: 100 requests per 15 minutes
+  
+    ## Response Format
+    All responses follow a standardized format:
+    - Success: `{ "success": true, "data": {...} }`
+    - Error: `{ "success": false, "error": "message", "details": {...} }`
+
+servers:
+  - url: https://api.tweeter.com
+    description: Production server
+  - url: http://localhost:5173
+    description: Development server
+
+security:
+  - cookieAuth: []
+
+paths:
+  /api/auth/register:
+    post:
+      summary: Register new user
+      description: |
+        Creates a new user account with validation for username, email, and password.
+        Returns user data and sets authentication cookies on success.
+      tags:
+        - Authentication
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+              example:
+                success: true
+                data:
+                  user:
+                    id: "018f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f"
+                    username: "johndoe"
+                    email: "john@example.com"
+                    name: "John Doe"
+                  message: "Registration successful"
+          headers:
+            Set-Cookie:
+              description: Authentication cookies
+              schema:
+                type: string
+                example: "access_token=abc123; HttpOnly; Secure; SameSite=Strict; Max-Age=900; Path=/"
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                success: false
+                error: "Validation failed"
+                details:
+                  username: ["Username already taken"]
+                  email: ["Email already registered"]
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+
+  /api/auth/login:
+    post:
+      summary: User login
+      description: |
+        Authenticates user with email and password. Returns user data and
+        sets authentication cookies on successful login.
+      tags:
+        - Authentication
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+              example:
+                success: true
+                data:
+                  user:
+                    id: "018f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f"
+                    username: "johndoe"
+                    email: "john@example.com"
+                    name: "John Doe"
+                  accessToken: "eyJhbGciOiJIUzI1NiIs..."
+                  message: "Login successful"
+          headers:
+            Set-Cookie:
+              description: Authentication cookies
+              schema:
+                type: string
+                example: "access_token=abc123; refresh_token=def456; HttpOnly; Secure; SameSite=Strict"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /api/auth/logout:
+    post:
+      summary: User logout
+      description: Clears authentication cookies and ends user session
+      tags:
+        - Authentication
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Logged out successfully"
+          headers:
+            Set-Cookie:
+              description: Cleared authentication cookies
+              schema:
+                type: string
+                example: "access_token=; Max-Age=0; Path=/; refresh_token=; Max-Age=0; Path=/"
+
+  /api/tweets:
+    get:
+      summary: Get tweets
+      description: |
+        Retrieves tweets with pagination. Can filter by user ID or get all tweets.
+        Returns tweet data with user information and like counts.
+      tags:
+        - Tweets
+      operationId: getTweets
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of tweets per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: userId
+          in: query
+          description: Filter tweets by specific user ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: username
+          in: query
+          description: Filter tweets by username
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tweets retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TweetsListResponse'
+              example:
+                success: true
+                data:
+                  tweets:
+                    - id: "018f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f"
+                      content: "Hello, world!"
+                      createdAt: "2024-01-15T10:30:00Z"
+                      updatedAt: "2024-01-15T10:30:00Z"
+                      userId: "018f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f"
+                      user:
+                        id: "018f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f"
+                        username: "johndoe"
+                        name: "John Doe"
+                      likeCount: 5
+                      isLiked: true
+                  pagination:
+                    limit: 20
+                    offset: 0
+                    hasMore: true
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+    post:
+      summary: Create new tweet
+      description: Creates a new tweet with content validation and rate limiting
+      tags:
+        - Tweets
+      operationId: createTweet
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTweetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateTweetRequest'
+      responses:
+        '201':
+          description: Tweet created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TweetResponse'
+              example:
+                success: true
+                data:
+                  tweet:
+                    id: "018f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f"
+                    content: "Hello, world!"
+                    createdAt: "2024-01-15T10:30:00Z"
+                    updatedAt: "2024-01-15T10:30:00Z"
+                    userId: "018f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f"
+                    user:
+                      id: "018f8f8f-8f8f-8f8f-8f8f-8f8f8f8f8f8f"
+                      username: "johndoe"
+                      name: "John Doe"
+                    likeCount: 0
+                  message: "Tweet created successfully"
+        '400':
+          description: Validation error or rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+
+  /api/tweets/{id}:
+    get:
+      summary: Get tweet by ID
+      description: Retrieves a single tweet by its ID
+      tags:
+        - Tweets
+      operationId: getTweetById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The tweet ID
+      responses:
+        '200':
+          description: Tweet retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TweetResponse'
+        '404':
+          description: Tweet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+    put:
+      summary: Update tweet
+      description: Updates tweet content (user must be tweet owner)
+      tags:
+        - Tweets
+      operationId: updateTweet
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The tweet ID to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTweetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UpdateTweetRequest'
+      responses:
+        '200':
+          description: Tweet updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TweetResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Forbidden (not tweet owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Tweet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+    delete:
+      summary: Delete tweet
+      description: Deletes a tweet (user must be tweet owner)
+      tags:
+        - Tweets
+      operationId: deleteTweet
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The tweet ID to delete
+      responses:
+        '204':
+          description: Tweet deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '403':
+          description: Forbidden (not tweet owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenError'
+        '404':
+          description: Tweet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /api/tweets/{id}/like:
+    post:
+      summary: Toggle like on tweet
+      description: Adds or removes a like from a tweet
+      tags:
+        - Tweets
+        - Likes
+      operationId: toggleLike
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The tweet ID to like/unlike
+      responses:
+        '200':
+          description: Like toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      liked:
+                        type: boolean
+                        description: Whether the tweet is now liked
+                      likeCount:
+                        type: integer
+                        description: Current like count
+                    example:
+                      liked: true
+                      likeCount: 5
+                  message:
+                    type: string
+                    example: "Like toggled successfully"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Tweet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /api/timeline:
+    get:
+      summary: Get timeline
+      description: Retrieves the user's timeline with tweets from followed users
+      tags:
+        - Timeline
+      operationId: getTimeline
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of tweets per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Timeline retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TweetsListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+
+  /api/users/{id}/tweets:
+    get:
+      summary: Get user's tweets
+      description: Retrieves all tweets from a specific user
+      tags:
+        - Users
+        - Tweets
+      operationId: getUserTweets
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The user ID
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of tweets per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: User's tweets retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TweetsListResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+  /api/users/{id}/follow:
+    post:
+      summary: Toggle follow user
+      description: Follows or unfollows a user
+      tags:
+        - Users
+        - Follows
+      operationId: toggleFollow
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The user ID to follow/unfollow
+      responses:
+        '200':
+          description: Follow toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      following:
+                        type: boolean
+                        description: Whether the user is now being followed
+                      followerCount:
+                        type: integer
+                        description: Current follower count
+                    example:
+                      following: true
+                      followerCount: 100
+                  message:
+                    type: string
+                    example: "Follow toggled successfully"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: JWT access token stored in HTTP-only cookie
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - name
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: "^[a-zA-Z0-9_-]+$"
+          description: Unique username (alphanumeric, underscores, hyphens)
+        email:
+          type: string
+          format: email
+          description: Valid email address
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: |
+            Strong password with at least:
+            - One lowercase letter
+            - One uppercase letter
+            - One number
+            - One special character (@$!%*?&)
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Display name
+      example:
+        username: "johndoe"
+        email: "john@example.com"
+        password: "TestPass123!"
+        name: "John Doe"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: Registered email address
+        password:
+          type: string
+          minLength: 1
+          description: User password
+      example:
+        email: "john@example.com"
+        password: "TestPass123!"
+
+    CreateTweetRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 140
+          description: Tweet content
+      example:
+        content: "Hello, world! This is my first tweet."
+
+    UpdateTweetRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 140
+          description: Updated tweet content
+      example:
+        content: "Updated tweet content!"
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique user identifier
+        username:
+          type: string
+          description: Unique username
+        email:
+          type: string
+          format: email
+          description: User email address
+        name:
+          type: string
+          description: Display name
+
+    Tweet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique tweet identifier
+        content:
+          type: string
+          maxLength: 140
+          description: Tweet content
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        userId:
+          type: string
+          format: uuid
+          description: Tweet author's user ID
+        user:
+          $ref: '#/components/schemas/User'
+        likeCount:
+          type: integer
+          minimum: 0
+          description: Number of likes
+        isLiked:
+          type: boolean
+          description: Whether current user has liked this tweet
+
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: integer
+          description: Number of items per page
+        offset:
+          type: integer
+          description: Current offset
+        hasMore:
+          type: boolean
+          description: Whether more items are available
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            accessToken:
+              type: string
+              description: JWT access token
+            message:
+              type: string
+              example: "Operation successful"
+
+    TweetResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            tweet:
+              $ref: '#/components/schemas/Tweet'
+            message:
+              type: string
+              example: "Tweet created successfully"
+
+    TweetsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            tweets:
+              type: array
+              items:
+                $ref: '#/components/schemas/Tweet'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Validation failed"
+        details:
+          type: object
+          properties:
+            fieldErrors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+            formErrors:
+              type: array
+              items:
+                type: string
+
+    UnauthorizedError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Unauthorized"
+
+    ForbiddenError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Forbidden"
+
+    NotFoundError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Resource not found"
+
+    ServerError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Internal server error"

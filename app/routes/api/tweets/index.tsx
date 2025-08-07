@@ -6,7 +6,7 @@ import { tweets, users } from '~/lib/db/schema';
 import { requireAuth } from '~/lib/middleware/auth';
 import { rateLimit } from '~/lib/middleware/rate-limit';
 import { sanitizeInput } from '~/lib/middleware/security';
-import { createId } from 'uuidv7';
+import { uuidv7 } from 'uuidv7';
 import { desc, eq, and } from 'drizzle-orm';
 
 const tweetSchema = z.object({
@@ -40,43 +40,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const offset = parseInt(url.searchParams.get('offset') || '0');
     const userId = url.searchParams.get('userId');
 
-    const tweetsQuery = db
-      .select({
-        id: tweets.id,
-        content: tweets.content,
-        createdAt: tweets.createdAt,
-        updatedAt: tweets.updatedAt,
-        user: {
-          id: users.id,
-          username: users.username,
-          name: users.displayName,
-        },
-      })
-      .from(tweets)
-      .innerJoin(users, eq(tweets.userId, users.id))
-      .orderBy(desc(tweets.createdAt))
-      .limit(limit)
-      .offset(offset);
+    const tweets = userId
+      ? await TweetService.findByUserId(userId, limit, offset)
+      : await TweetService.findAll(limit, offset);
 
-    if (userId) {
-      tweetsQuery.where(eq(tweets.userId, userId));
-    }
-
-    const allTweets = await tweetsQuery;
-
-    return json({
-      tweets: allTweets,
+    return ResponseUtil.success({
+      tweets,
       pagination: {
         limit,
         offset,
-        hasMore: allTweets.length === limit,
+        hasMore: tweets.length === limit,
       },
     });
   } catch (error) {
-    console.error('Error fetching tweets:', error);
-    return json({ error: 'Internal server error' }, { status: 500 });
+    const appError = handleError(error);
+    return ResponseUtil.error(appError.message, appError.statusCode);
   }
 }
+
+import { ResponseUtil } from '~/utils/response.util';
+import { handleError } from '~/utils/error.util';
+import { TweetService } from '~/services/tweet.service';
+import { tweetSchema } from '~/validators/tweet.validator';
 
 export const action = createTweetRateLimit(
   requireAuth(async ({ request }) => {
@@ -88,45 +73,24 @@ export const action = createTweetRateLimit(
         content: sanitizeInput(data.content || ''),
       });
 
-      const authHeader = request.headers.get('Authorization');
-      const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : '';
-      
-      // In a real app, we'd extract user from JWT token
-      // For now, we'll use the authenticated user from the request
       const user = (request as any).user;
-      
       if (!user?.id) {
-        return json({ error: 'Unauthorized' }, { status: 401 });
+        return ResponseUtil.unauthorized();
       }
 
-      const newTweet = await db.insert(tweets).values({
-        id: createId(),
+      const tweet = await TweetService.create({
+        ...validatedData,
         userId: user.id,
-        content: validatedData.content,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }).returning({
-        id: tweets.id,
-        content: tweets.content,
-        createdAt: tweets.createdAt,
-        updatedAt: tweets.updatedAt,
       });
 
-      return json({
-        tweet: newTweet[0],
+      return ResponseUtil.created({
+        tweet,
         message: 'Tweet created successfully',
-      }, { status: 201 });
+      });
 
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return json(
-          { error: 'Validation failed', details: error.errors },
-          { status: 400 }
-        );
-      }
-      
-      console.error('Error creating tweet:', error);
-      return json({ error: 'Internal server error' }, { status: 500 });
+      const appError = handleError(error);
+      return ResponseUtil.error(appError.message, appError.statusCode, appError.details);
     }
   })
 );
