@@ -1,18 +1,11 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@react-router/node';
 import { json } from '@react-router/node';
 import { z } from 'zod';
-import { db } from '~/lib/db/connection';
-import { tweets, users } from '~/lib/db/schema';
+import type { AuthenticatedRequest } from '~/lib/middleware/auth';
 import { requireAuth } from '~/lib/middleware/auth';
 import { sanitizeInput } from '~/lib/middleware/security';
-import { eq, and } from 'drizzle-orm';
-
-const updateTweetSchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Tweet content is required')
-    .max(140, 'Tweet must be 140 characters or less'),
-});
+import { findTweetById, updateTweet, deleteTweet } from '~/models/tweet/tweet.model';
+import { tweetUpdateSchema } from '~/models/tweet/tweet.validator';
 
 export async function loader({ params }: LoaderFunctionArgs) {
   try {
@@ -22,35 +15,20 @@ export async function loader({ params }: LoaderFunctionArgs) {
       return json({ error: 'Tweet ID is required' }, { status: 400 });
     }
 
-    const tweet = await db
-      .select({
-        id: tweets.id,
-        content: tweets.content,
-        createdAt: tweets.createdAt,
-        updatedAt: tweets.updatedAt,
-        user: {
-          id: users.id,
-          username: users.username,
-          name: users.displayName,
-        },
-      })
-      .from(tweets)
-      .innerJoin(users, eq(tweets.userId, users.id))
-      .where(eq(tweets.id, tweetId))
-      .limit(1);
+    const tweet = await findTweetById(tweetId);
 
-    if (tweet.length === 0) {
+    if (!tweet) {
       return json({ error: 'Tweet not found' }, { status: 404 });
     }
 
-    return json({ tweet: tweet[0] });
+    return json({ tweet });
   } catch (error) {
     console.error('Error fetching tweet:', error);
     return json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export const action = requireAuth(async ({ request, params }) => {
+export const action = requireAuth(async ({ request, params }: ActionFunctionArgs & { request: AuthenticatedRequest }) => {
   try {
     const tweetId = params.id;
     
@@ -58,11 +36,7 @@ export const action = requireAuth(async ({ request, params }) => {
       return json({ error: 'Tweet ID is required' }, { status: 400 });
     }
 
-    const user = (request as any).user;
-    
-    if (!user?.id) {
-      return json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = request.user!; // Safe because requireAuth ensures user exists
 
     const method = request.method;
 
@@ -70,55 +44,19 @@ export const action = requireAuth(async ({ request, params }) => {
       const formData = await request.formData();
       const data = Object.fromEntries(formData);
       
-      const validatedData = updateTweetSchema.parse({
+      const validatedData = tweetUpdateSchema.parse({
         content: sanitizeInput(data.content || ''),
       });
 
-      // Verify ownership
-      const existingTweet = await db
-        .select()
-        .from(tweets)
-        .where(and(eq(tweets.id, tweetId), eq(tweets.userId, user.id)))
-        .limit(1);
-
-      if (existingTweet.length === 0) {
-        return json({ error: 'Tweet not found or unauthorized' }, { status: 404 });
-      }
-
-      const updatedTweet = await db
-        .update(tweets)
-        .set({
-          content: validatedData.content,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(tweets.id, tweetId), eq(tweets.userId, user.id)))
-        .returning({
-          id: tweets.id,
-          content: tweets.content,
-          createdAt: tweets.createdAt,
-          updatedAt: tweets.updatedAt,
-        });
+      const updatedTweet = await updateTweet(tweetId, user.id, validatedData);
 
       return json({
-        tweet: updatedTweet[0],
+        tweet: updatedTweet,
         message: 'Tweet updated successfully',
       });
 
     } else if (method === 'DELETE') {
-      // Verify ownership
-      const existingTweet = await db
-        .select()
-        .from(tweets)
-        .where(and(eq(tweets.id, tweetId), eq(tweets.userId, user.id)))
-        .limit(1);
-
-      if (existingTweet.length === 0) {
-        return json({ error: 'Tweet not found or unauthorized' }, { status: 404 });
-      }
-
-      await db
-        .delete(tweets)
-        .where(and(eq(tweets.id, tweetId), eq(tweets.userId, user.id)));
+      await deleteTweet(tweetId, user.id);
 
       return json({ message: 'Tweet deleted successfully' });
     }

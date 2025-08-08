@@ -20,16 +20,16 @@ This guide provides a systematic approach to migrate legacy frontend actions to 
 #### 1.1 Create Service Directory Structure
 ```bash
 # Create service layer directories
-mkdir -p app/services/__tests__
+mkdir -p app/models/__tests__
 mkdir -p app/validators/__tests__
 mkdir -p app/utils/__tests__
 
 # Create base service files
-touch app/services/base.service.ts
-touch app/services/auth.service.ts
-touch app/services/tweet.service.ts
-touch app/services/user.service.ts
-touch app/services/like.service.ts
+touch app/models/base.service.ts
+touch app/models/index.ts
+touch app/models/index.ts
+touch app/models/index.ts
+touch app/models/index.ts
 ```
 
 #### 1.2 Install Required Dependencies
@@ -40,7 +40,7 @@ npm install -D @types/react-hook-form
 
 #### 1.3 Create Base Service Template
 ```typescript
-// app/services/base.service.ts
+// app/models/base.service.ts
 export abstract class BaseService {
   static formatError(error: unknown): AppError {
     if (error instanceof AppError) {
@@ -106,7 +106,7 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 #### 2.2 Tweet Validation
 ```typescript
-// app/validators/tweet.validator.ts
+// app/validators/tweet.schema.ts
 import { z } from 'zod';
 
 export const createTweetSchema = z.object({
@@ -129,7 +129,7 @@ export type UpdateTweetInput = z.infer<typeof updateTweetSchema>;
 
 #### 3.1 Auth Service Implementation
 ```typescript
-// app/services/auth.service.ts
+// app/models/index.ts
 import { db } from '~/lib/db/connection';
 import { users } from '~/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -151,7 +151,7 @@ export interface AuthUser {
   name: string;
 }
 
-export class AuthService {
+export class Index {
   static async login(data: LoginInput): Promise<{ user: AuthUser; tokens: AuthTokens }> {
     const user = await db
       .select()
@@ -390,7 +390,7 @@ export async function action({ request }: ActionFunctionArgs) {
 import type { ActionFunctionArgs } from '@react-router/node';
 import { ResponseUtil } from '~/utils/response.util';
 import { handleError } from '~/utils/error.util';
-import { AuthService } from '~/services/auth.service';
+import { Index } from '~/models/auth.service';
 import { registerSchema } from '~/validators/auth.validator';
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -398,7 +398,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const formData = await request.formData();
     const data = registerSchema.parse(Object.fromEntries(formData));
     
-    const { user } = await AuthService.register(data);
+    const { user } = await Index.register(data);
     
     const response = ResponseUtil.created({
       user,
@@ -493,7 +493,7 @@ import { requireAuth } from '~/lib/middleware/auth';
 import { rateLimit } from '~/lib/middleware/rate-limit';
 import { ResponseUtil } from '~/utils/response.util';
 import { handleError } from '~/utils/error.util';
-import { TweetService } from '~/services/tweet.service';
+import { createTweet } from '~/models/tweet.service';
 import { createTweetSchema } from '~/validators/tweet.validator';
 import { sanitizeInput } from '~/lib/middleware/security';
 
@@ -513,7 +513,7 @@ export const action = createTweetRateLimit(
       });
 
       const user = (request as any).user;
-      const tweet = await TweetService.create({
+      const tweet = await createTweet({
         ...data,
         userId: user.id,
       });
@@ -632,14 +632,14 @@ export function useApi<T>() {
 
 #### 7.1 Service Layer Tests
 ```typescript
-// app/services/__tests__/auth.service.test.ts
+// app/models/__tests__/auth.service.test.ts
 import { describe, it, expect } from 'vitest';
-import { AuthService } from '../auth.service';
+import { Index } from '../auth.service';
 
-describe('AuthService', () => {
+describe('Index', () => {
   describe('register', () => {
     it('should create new user with valid data', async () => {
-      const result = await AuthService.register({
+      const result = await Index.register({
         username: 'testuser',
         email: 'test@example.com',
         password: 'TestPass123!',
@@ -652,7 +652,7 @@ describe('AuthService', () => {
 
     it('should throw error for duplicate username', async () => {
       await expect(
-        AuthService.register({
+        Index.register({
           username: 'existing',
           email: 'new@example.com',
           password: 'TestPass123!',

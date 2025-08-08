@@ -45,10 +45,10 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     const formData = await request.formData();
     const data = loginSchema.parse(Object.fromEntries(formData));
-    const { user, tokens } = await AuthService.login(data);
+    const { user, tokens } = await Index.login(data);
     
     const response = ResponseUtil.success({ user, accessToken: tokens.accessToken });
-    const cookies = AuthService.generateAuthCookies(tokens.accessToken, tokens.refreshToken);
+    const cookies = Index.generateAuthCookies(tokens.accessToken, tokens.refreshToken);
     return ResponseUtil.withCookies(response, cookies);
   } catch (error) {
     const appError = handleError(error);
@@ -65,14 +65,14 @@ export async function action({ request }: ActionFunctionArgs) {
 ```
 app/
 ├── services/
-│   ├── auth.service.ts      # Authentication logic
-│   ├── tweet.service.ts     # Tweet operations
-│   ├── user.service.ts      # User management
-│   ├── like.service.ts      # Like operations
+│   ├── index.ts      # Authentication logic
+│   ├── index.ts     # Tweet operations
+│   ├── index.ts      # User management
+│   ├── index.ts      # Like operations
 │   └── base.service.ts      # Generic patterns
 ├── validators/
 │   ├── auth.validator.ts    # Validation schemas
-│   └── tweet.validator.ts   # Tweet schemas
+│   └── tweet.schema.ts   # Tweet schemas
 ├── utils/
 │   ├── response.util.ts     # Standardized responses
 │   └── error.util.ts        # Error handling
@@ -82,8 +82,8 @@ app/
 
 **Authentication Service Pattern**
 ```typescript
-// services/auth.service.ts
-export class AuthService {
+// models/index.ts
+export class Index {
   static async login(data: LoginData): Promise<{ user: AuthUser; tokens: AuthTokens }> {
     // Business logic only
     return { user, tokens };
@@ -105,7 +105,7 @@ export class AuthService {
 
 **Tweet Service Pattern**
 ```typescript
-// services/tweet.service.ts
+// models/index.ts
 export class TweetService {
   static async create(data: CreateTweetData): Promise<Tweet> {
     // Tweet creation logic
@@ -168,7 +168,7 @@ export const loginSchema = z.object({
 
 #### Tweet Validation
 ```typescript
-// validators/tweet.validator.ts
+// validators/tweet.schema.ts
 export const createTweetSchema = z.object({
   content: z.string()
     .min(1, 'Tweet content is required')
@@ -311,7 +311,7 @@ export async function generateRefreshToken(userId: string): Promise<string> {
 
 #### 1.1 Create Service Classes
 ```typescript
-// services/[feature].service.ts
+// models/[feature].service.ts
 export class [Feature]Service {
   static async [operation](data: InputType): Promise<OutputType> {
     // Business logic only
@@ -420,8 +420,8 @@ export class ResponseUtil {
 
 #### Service Testing
 ```typescript
-// services/__tests__/auth.service.test.ts
-describe('AuthService', () => {
+// models/__tests__/auth.service.test.ts
+describe('Index', () => {
   describe('login', () => {
     it('should return user and tokens for valid credentials', async () => {
       // Test implementation

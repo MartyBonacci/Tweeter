@@ -1,8 +1,8 @@
 import type { ActionFunctionArgs } from '@react-router/node';
 import { ResponseUtil } from '~/utils/response.util';
 import { handleError } from '~/utils/error.util';
-import { AuthService } from '~/services/auth.service';
-import { registerSchema } from '~/validators/auth.validator';
+import { Index } from '~/models/auth';
+import { registerSchema } from '~/models/auth/auth.validator';
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
@@ -10,7 +10,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const data = Object.fromEntries(formData);
     
     const validatedData = registerSchema.parse(data);
-    const { user } = await AuthService.register(validatedData);
+    const { user } = await Index.register(validatedData);
     
     return ResponseUtil.created({
       message: 'User registered successfully',

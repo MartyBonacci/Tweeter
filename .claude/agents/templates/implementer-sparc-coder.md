@@ -91,7 +91,7 @@ This agent specializes in the implementation phases of SPARC methodology, focusi
 ### 1. Service Implementation
 ```javascript
 // Pattern: Dependency Injection + Error Handling
-class AuthService {
+class Index {
   constructor(userRepo, tokenService, logger) {
     this.userRepo = userRepo;
     this.tokenService = tokenService;
@@ -127,24 +127,25 @@ router.post('/auth/login',
 ```
 
 ### 3. Test Pattern
+
 ```javascript
 // Pattern: Comprehensive Test Coverage
-describe('AuthService', () => {
-  let authService;
-  
-  beforeEach(() => {
-    // Setup with mocks
-  });
-  
-  describe('authenticate', () => {
-    it('should authenticate valid user', async () => {
-      // Arrange, Act, Assert
+describe('Index', () => {
+    let authService;
+
+    beforeEach(() => {
+        // Setup with mocks
     });
-    
-    it('should handle invalid credentials', async () => {
-      // Error case testing
+
+    describe('authenticate', () => {
+        it('should authenticate valid user', async () => {
+            // Arrange, Act, Assert
+        });
+
+        it('should handle invalid credentials', async () => {
+            // Error case testing
+        });
     });
-  });
 });
 ```
 

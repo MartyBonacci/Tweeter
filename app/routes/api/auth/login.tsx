@@ -1,8 +1,8 @@
 import type { ActionFunctionArgs } from '@react-router/node';
 import { ResponseUtil } from '~/utils/response.util';
 import { handleError } from '~/utils/error.util';
-import { AuthService } from '~/services/auth.service';
-import { loginSchema } from '~/validators/auth.validator';
+import { Index } from '~/models/auth';
+import { loginSchema } from '~/models/auth/auth.validator';
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
@@ -10,7 +10,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const data = Object.fromEntries(formData);
     
     const validatedData = loginSchema.parse(data);
-    const { user, tokens } = await AuthService.login(validatedData);
+    const { user, tokens } = await Index.login(validatedData);
     
     const response = ResponseUtil.success({
       message: 'Login successful',
@@ -18,7 +18,7 @@ export async function action({ request }: ActionFunctionArgs) {
       accessToken: tokens.accessToken,
     });
 
-    const cookies = AuthService.generateAuthCookies(tokens.accessToken, tokens.refreshToken);
+    const cookies = Index.generateAuthCookies(tokens.accessToken, tokens.refreshToken);
     return ResponseUtil.withCookies(response, cookies);
     
   } catch (error) {

@@ -328,7 +328,7 @@ npx ruv-swarm github multi-repo-queue \
 # Run integration tests across repos
 npx ruv-swarm github multi-repo-test \
   --setup-test-env \
-  --link-services \
+  --link-models \
   --run-e2e \
   --tear-down
 ```
@@ -423,7 +423,7 @@ npx ruv-swarm github health-check \
 ```bash
 # Coordinate microservices development
 npx ruv-swarm github microservices \
-  --services "auth,users,orders,payments" \
+  --models "auth,users,orders,payments" \
   --ensure-compatibility \
   --sync-contracts \
   --integration-tests

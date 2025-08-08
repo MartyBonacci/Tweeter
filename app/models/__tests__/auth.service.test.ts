@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AuthService } from '../auth.service';
+import { Index } from '../auth';
 import { db } from '~/lib/db/connection';
 import { users } from '~/lib/db/schema';
 import { hashPassword, verifyPassword } from '~/lib/auth/password';
@@ -16,7 +16,7 @@ const mockUser = {
   passwordHash: 'hashed-password',
 };
 
-describe('AuthService', () => {
+describe('Index', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -30,7 +30,7 @@ describe('AuthService', () => {
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
       vi.mocked(verifyPassword).mockResolvedValue(true);
 
-      const result = await AuthService.login({
+      const result = await Index.login({
         email: 'test@example.com',
         password: 'password123',
       });
@@ -50,7 +50,7 @@ describe('AuthService', () => {
       
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
 
-      await expect(AuthService.login({
+      await expect(Index.login({
         email: 'invalid@example.com',
         password: 'password123',
       })).rejects.toThrow('Invalid credentials');
@@ -64,7 +64,7 @@ describe('AuthService', () => {
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
       vi.mocked(verifyPassword).mockResolvedValue(false);
 
-      await expect(AuthService.login({
+      await expect(Index.login({
         email: 'test@example.com',
         password: 'wrongpassword',
       })).rejects.toThrow('Invalid credentials');
@@ -85,7 +85,7 @@ describe('AuthService', () => {
       vi.mocked(db.insert).mockReturnValue(mockInsert as any);
       vi.mocked(hashPassword).mockResolvedValue('hashed-password');
 
-      const result = await AuthService.register({
+      const result = await Index.register({
         username: 'testuser',
         email: 'test@example.com',
         name: 'Test User',
@@ -107,7 +107,7 @@ describe('AuthService', () => {
 
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
 
-      await expect(AuthService.register({
+      await expect(Index.register({
         username: 'existinguser',
         email: 'test@example.com',
         name: 'Test User',
@@ -123,7 +123,7 @@ describe('AuthService', () => {
 
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
 
-      await expect(AuthService.register({
+      await expect(Index.register({
         username: 'newuser',
         email: 'existing@example.com',
         name: 'Test User',

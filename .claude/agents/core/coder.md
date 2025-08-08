@@ -157,7 +157,7 @@ class ServiceError extends Error {
 src/
   modules/
     user/
-      user.service.ts      # Business logic
+      index.ts      # Business logic
       user.controller.ts   # HTTP handling
       user.repository.ts   # Data access
       user.types.ts        # Type definitions

@@ -14,8 +14,8 @@ const likeRateLimit = rateLimit({
 
 import { ResponseUtil } from '~/utils/response.util';
 import { handleError } from '~/utils/error.util';
-import { TweetService } from '~/services/tweet.service';
-import { LikeService } from '~/services/like.service';
+import { findTweetById } from '~/models/tweet';
+import { getTweetLikesCount, likeTweet, unlikeTweet } from '~/models/like';
 
 export async function loader({ params }: LoaderFunctionArgs) {
   try {
@@ -26,12 +26,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
     }
 
     // Check if tweet exists
-    const tweet = await TweetService.findById(tweetId);
+    const tweet = await findTweetById(tweetId);
     if (!tweet) {
       return ResponseUtil.notFound('Tweet');
     }
 
-    const count = await LikeService.getLikesCount(tweetId);
+    const count = await getTweetLikesCount(tweetId);
 
     return ResponseUtil.success({
       count,
@@ -60,11 +60,11 @@ export const action = likeRateLimit(
       const method = request.method;
 
       if (method === 'POST') {
-        const result = await LikeService.like(tweetId, user.id);
+        const result = await likeTweet(tweetId, user.id);
         return ResponseUtil.created(result);
 
       } else if (method === 'DELETE') {
-        const result = await LikeService.unlike(tweetId, user.id);
+        const result = await unlikeTweet(tweetId, user.id);
         return ResponseUtil.success(result);
       }
 

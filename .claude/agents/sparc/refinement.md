@@ -203,7 +203,7 @@ export class AuthenticationService {
       const user = await this.authenticateUser(credentials);
       const session = await this.createSession(user);
       
-      // Emit event for other services
+      // Emit event for other models
       await this.eventBus.emit('user.logged_in', {
         userId: user.id,
         timestamp: new Date()
@@ -404,7 +404,7 @@ function retry(attempts = 3, delay = 1000) {
   };
 }
 
-// Circuit breaker for external services
+// Circuit breaker for external models
 export class CircuitBreaker {
   private failures = 0;
   private lastFailureTime?: Date;

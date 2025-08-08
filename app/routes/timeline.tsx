@@ -1,14 +1,14 @@
 import { Form, Link, useActionData, useLoaderData } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { requireAuth } from "~/lib/session.server";
-import { TweetService } from "~/services/tweet.service";
-import { tweetSchema } from "~/validators/tweet.validator";
+import { getUserTimeline, createTweet } from "~/models/tweet";
+import { tweetSchema } from "~/models/tweet/tweet.schema";
 
 export async function loader({ request }: { request: Request }) {
   const user = await requireAuth(request);
   
-  // Get timeline tweets using TweetService
-  const timelineTweets = await TweetService.getTimeline(user.userId, 50, 0);
+  // Get timeline tweets using getUserTimeline
+  const timelineTweets = await getUserTimeline(user.userId, 50, 0);
 
   return { tweets: timelineTweets, user };
 }
@@ -34,7 +34,7 @@ export async function action({ request }: { request: Request }) {
     const { content } = validation.data;
 
     try {
-        const newTweet = await TweetService.create({
+        const newTweet = await createTweet({
             userId: user.userId,
             content,
         });

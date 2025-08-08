@@ -1026,7 +1026,7 @@ Dependencies: ↳ X deps | Actionable: ▶
 [BatchTool - Message 2]:
   // Create ALL directories at once
   Bash("mkdir -p test-app/{src,tests,docs,config}")
-  Bash("mkdir -p test-app/src/{models,routes,middleware,services}")
+  Bash("mkdir -p test-app/src/{models,routes,middleware,models}")
   Bash("mkdir -p test-app/tests/{unit,integration}")
 
   // Write ALL base files at once

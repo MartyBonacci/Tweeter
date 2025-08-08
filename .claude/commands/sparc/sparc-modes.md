@@ -107,13 +107,13 @@ mcp__claude-flow__sparc_mode {
 // 3. Implementation
 mcp__claude-flow__sparc_mode {
   mode: "coder",
-  task_description: "implement services"
+  task_description: "implement models"
 }
 
 // 4. Testing
 mcp__claude-flow__sparc_mode {
   mode: "tdd",
-  task_description: "test all services"
+  task_description: "test all models"
 }
 
 // 5. Review

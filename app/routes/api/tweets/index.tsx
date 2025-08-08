@@ -1,20 +1,13 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@react-router/node';
 import { json } from '@react-router/node';
-import { z } from 'zod';
-import { db } from '~/lib/db/connection';
-import { tweets, users } from '~/lib/db/schema';
+import type { AuthenticatedRequest } from '~/lib/middleware/auth';
 import { requireAuth } from '~/lib/middleware/auth';
 import { rateLimit } from '~/lib/middleware/rate-limit';
 import { sanitizeInput } from '~/lib/middleware/security';
-import { uuidv7 } from 'uuidv7';
-import { desc, eq, and } from 'drizzle-orm';
-
-const tweetSchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Tweet content is required')
-    .max(140, 'Tweet must be 140 characters or less'),
-});
+import { ResponseUtil } from '~/utils/response.util';
+import { handleError } from '~/utils/error.util';
+import { findTweetsByUserId, findAllTweets, createTweet } from '~/models/tweet/tweet.model';
+import { tweetSchema } from '~/models/tweet/tweet.validator';
 
 // Rate limiting: 10 tweets per 15 minutes
 const createTweetRateLimit = rateLimit({
@@ -41,8 +34,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const userId = url.searchParams.get('userId');
 
     const tweets = userId
-      ? await TweetService.findByUserId(userId, limit, offset)
-      : await TweetService.findAll(limit, offset);
+      ? await findTweetsByUserId(userId, limit, offset)
+      : await findAllTweets(limit, offset);
 
     return ResponseUtil.success({
       tweets,
@@ -58,13 +51,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
-import { ResponseUtil } from '~/utils/response.util';
-import { handleError } from '~/utils/error.util';
-import { TweetService } from '~/services/tweet.service';
-import { tweetSchema } from '~/validators/tweet.validator';
-
 export const action = createTweetRateLimit(
-  requireAuth(async ({ request }) => {
+  requireAuth(async ({ request }: ActionFunctionArgs & { request: AuthenticatedRequest }) => {
     try {
       const formData = await request.formData();
       const data = Object.fromEntries(formData);
@@ -73,12 +61,9 @@ export const action = createTweetRateLimit(
         content: sanitizeInput(data.content || ''),
       });
 
-      const user = (request as any).user;
-      if (!user?.id) {
-        return ResponseUtil.unauthorized();
-      }
+      const user = request.user!; // Safe because requireAuth ensures user exists
 
-      const tweet = await TweetService.create({
+      const tweet = await createTweet({
         ...validatedData,
         userId: user.id,
       });

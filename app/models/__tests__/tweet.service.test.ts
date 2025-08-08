@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TweetService } from '../tweet.service';
+import { createTweet, findTweetById, findTweetsByUserId, findAllTweets, updateTweet, deleteTweet } from '../tweet';
 import { db } from '~/lib/db/connection';
 import { tweets, users, likes } from '~/lib/db/schema';
 
@@ -19,12 +19,12 @@ const mockTweet = {
   likeCount: 5,
 };
 
-describe('TweetService', () => {
+describe('Tweet Service Functions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('create', () => {
+  describe('createTweet', () => {
     it('should create a new tweet', async () => {
       const mockInsert = vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: 'tweet-123' }]),
@@ -37,7 +37,7 @@ describe('TweetService', () => {
       vi.mocked(db.insert).mockReturnValue(mockInsert as any);
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
 
-      const result = await TweetService.create({
+      const result = await createTweet({
         content: 'Test tweet content',
         userId: 'user-123',
       });
@@ -46,7 +46,7 @@ describe('TweetService', () => {
     });
   });
 
-  describe('findById', () => {
+  describe('findTweetById', () => {
     it('should find tweet by id', async () => {
       const mockSelect = vi.fn().mockReturnValue({
         limit: vi.fn().mockResolvedValue([mockTweet]),
@@ -54,7 +54,7 @@ describe('TweetService', () => {
 
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
 
-      const result = await TweetService.findById('tweet-123');
+      const result = await findTweetById('tweet-123');
       expect(result).toEqual(mockTweet);
     });
 
@@ -65,12 +65,12 @@ describe('TweetService', () => {
 
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
 
-      const result = await TweetService.findById('non-existent');
+      const result = await findTweetById('non-existent');
       expect(result).toBeNull();
     });
   });
 
-  describe('findByUserId', () => {
+  describe('findTweetsByUserId', () => {
     it('should find tweets by user id', async () => {
       const mockSelect = vi.fn().mockReturnValue({
         limit: vi.fn().mockResolvedValue([mockTweet]),
@@ -80,14 +80,14 @@ describe('TweetService', () => {
 
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
 
-      const result = await TweetService.findByUserId('user-123', 10, 0);
+      const result = await findTweetsByUserId('user-123', 10, 0);
       expect(result).toEqual([mockTweet]);
     });
   });
 
-  describe('update', () => {
+  describe('updateTweet', () => {
     it('should update tweet if user is owner', async () => {
-      const mockFind = vi.spyOn(TweetService, 'findById').mockResolvedValue({
+      const mockFind = vi.fn().mockResolvedValue({
         ...mockTweet,
         userId: 'user-123',
       });
@@ -103,44 +103,46 @@ describe('TweetService', () => {
       vi.mocked(db.update).mockReturnValue(mockUpdate as any);
       vi.mocked(db.select).mockReturnValue(mockSelect as any);
 
-      const result = await TweetService.update('tweet-123', 'user-123', {
+      // Mock findTweetById calls
+      vi.mocked(db.select).mockReturnValue(mockSelect as any);
+
+      const result = await updateTweet('tweet-123', 'user-123', {
         content: 'Updated content',
       });
 
       expect(result.content).toBe('Updated content');
-      mockFind.mockRestore();
     });
 
     it('should throw error if user is not owner', async () => {
-      vi.spyOn(TweetService, 'findById').mockResolvedValue({
-        ...mockTweet,
-        userId: 'other-user',
-      });
+      vi.mocked(db.select).mockReturnValue({
+        limit: vi.fn().mockResolvedValue([{ ...mockTweet, userId: 'other-user' }]),
+      } as any);
 
       await expect(
-        TweetService.update('tweet-123', 'user-123', { content: 'Updated' })
+        updateTweet('tweet-123', 'user-123', { content: 'Updated' })
       ).rejects.toThrow('Unauthorized to update this tweet');
     });
   });
 
-  describe('delete', () => {
+  describe('deleteTweet', () => {
     it('should delete tweet if user is owner', async () => {
-      vi.spyOn(TweetService, 'findById').mockResolvedValue({
-        ...mockTweet,
-        userId: 'user-123',
-      });
+      vi.mocked(db.select).mockReturnValue({
+        limit: vi.fn().mockResolvedValue([{ ...mockTweet, userId: 'user-123' }]),
+      } as any);
 
       const mockDelete = vi.fn().mockReturnValue({ count: 1 });
       vi.mocked(db.delete).mockReturnValue(mockDelete as any);
 
-      await TweetService.delete('tweet-123', 'user-123');
+      await deleteTweet('tweet-123', 'user-123');
       expect(mockDelete).toHaveBeenCalled();
     });
 
     it('should throw error if tweet does not exist', async () => {
-      vi.spyOn(TweetService, 'findById').mockResolvedValue(null);
+      vi.mocked(db.select).mockReturnValue({
+        limit: vi.fn().mockResolvedValue([]),
+      } as any);
 
-      await expect(TweetService.delete('non-existent', 'user-123'))
+      await expect(deleteTweet('non-existent', 'user-123'))
         .rejects.toThrow('Tweet not found');
     });
   });

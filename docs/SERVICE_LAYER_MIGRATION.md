@@ -19,14 +19,14 @@ This migration refactors Remix action functions from 90-132 lines to 8-15 lines 
 ```
 app/
 ├── services/
-│   ├── auth.service.ts      # Authentication logic
-│   ├── tweet.service.ts     # Tweet operations
-│   ├── user.service.ts      # User management
-│   ├── like.service.ts      # Like operations
+│   ├── index.ts      # Authentication logic
+│   ├── index.ts     # Tweet operations
+│   ├── index.ts      # User management
+│   ├── index.ts      # Like operations
 │   └── base.service.ts      # Generic patterns
 ├── validators/
 │   ├── auth.validator.ts    # Validation schemas
-│   └── tweet.validator.ts   # Tweet schemas
+│   └── tweet.schema.ts   # Tweet schemas
 ├── utils/
 │   ├── response.util.ts     # Standardized responses
 │   └── error.util.ts        # Error handling
@@ -50,7 +50,7 @@ export async function action({ request }: ActionFunctionArgs) {
 ```ts
 export async function action({ request }: ActionFunctionArgs) {
   const data = await authValidator.login.parseAsync(request);
-  return AuthService.login(data);
+  return Index.login(data);
 }
 ```
 
@@ -67,8 +67,8 @@ export const loginSchema = z.object({
 
 ### 2. Service Layer Logic
 ```ts
-// services/auth.service.ts
-export class AuthService {
+// models/index.ts
+export class Index {
   static async login(data: LoginData) {
     // Business logic only
     return { user, tokens };
@@ -99,7 +99,7 @@ ResponseUtil.error(message, 400)  // 400 Bad Request
 npm test
 
 # Run service tests
-npm test app/services/__tests__
+npm test app/models/__tests__
 
 # Run validator tests
 npm test app/validators/__tests__

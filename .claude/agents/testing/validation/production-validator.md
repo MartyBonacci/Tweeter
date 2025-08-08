@@ -119,7 +119,7 @@ describe('Database Integration Validation', () => {
 ### 3. External API Integration
 
 ```typescript
-// Validate against real external services
+// Validate against real external models
 describe('External API Validation', () => {
   it('should integrate with real payment service', async () => {
     const paymentService = new PaymentService({

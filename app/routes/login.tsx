@@ -1,6 +1,6 @@
 import { Form, Link, useActionData } from "react-router";
-import { loginSchema } from "~/validators/auth.validator";
-import { AuthService } from "~/services/auth.service";
+import { loginSchema } from "~/models/auth/auth.validator";
+import { Index } from "~/models/auth";
 import { createUserSession, getUserSession } from "~/lib/session.server";
 
 export async function loader({ request }: { request: Request }) {
@@ -23,7 +23,7 @@ export async function action({ request }: { request: Request }) {
   try {
     const loginData = { username, password };
     
-    const { user } = await AuthService.login(loginData);
+    const { user } = await Index.login(loginData);
     
     return createUserSession(
       { userId: user.id, username: user.username, email: user.email },

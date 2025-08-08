@@ -55,7 +55,7 @@ constraints:
     - "lib/**"
     - "app/**"
     - "components/**"
-    - "services/**"
+    - "models/**"
     - "utils/**"
   forbidden_paths:
     - "node_modules/**"
