@@ -3,14 +3,23 @@ import { useEffect, useRef, useState } from "react";
 import { requireAuth } from "~/lib/session.server";
 import { getUserTimeline, createTweet } from "~/models/tweet";
 import { tweetSchema } from "~/models/tweet/tweet.schema";
+import { executeWithRetry } from "~/lib/db/connection";
 
 export async function loader({ request }: { request: Request }) {
   const user = await requireAuth(request);
   
-  // Get timeline tweets using getUserTimeline
-  const timelineTweets = await getUserTimeline(user.userId, 50, 0);
+  try {
+    // Get timeline tweets using getUserTimeline with retry logic
+    const timelineTweets = await executeWithRetry(() => 
+      getUserTimeline(user.userId, 50, 0)
+    );
 
-  return { tweets: timelineTweets, user };
+    return { tweets: timelineTweets, user };
+  } catch (error) {
+    console.error("Timeline loading error:", error);
+    // Return empty timeline if database is unavailable
+    return { tweets: [], user, error: "Database temporarily unavailable" };
+  }
 }
 
 export async function action({ request }: { request: Request }) {
@@ -34,10 +43,12 @@ export async function action({ request }: { request: Request }) {
     const { content } = validation.data;
 
     try {
-        const newTweet = await createTweet({
-            userId: user.userId,
-            content,
-        });
+        const newTweet = await executeWithRetry(() => 
+            createTweet({
+                userId: user.userId,
+                content,
+            })
+        );
 
         return Response.json({
             success: true,
@@ -49,15 +60,22 @@ export async function action({ request }: { request: Request }) {
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Tweet creation error:", error);
+        
+        // Provide more specific error messages
+        const isConnectionError = error.code === 'CONNECT_TIMEOUT' || error.errno === 'CONNECT_TIMEOUT';
+        const errorMessage = isConnectionError 
+            ? "Database connection timeout. Please try again." 
+            : "Failed to create tweet";
+            
         return Response.json(
             {
-                error: "Failed to create tweet",
+                error: errorMessage,
                 errors: {},
                 values: data
             },
-            { status: 500 }
+            { status: isConnectionError ? 503 : 500 }
         );
     }
 }

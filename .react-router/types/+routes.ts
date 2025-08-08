@@ -31,12 +31,17 @@ type Pages = {
   "/tweets": {
     params: {};
   };
+  "/api/*": {
+    params: {
+      "*": string;
+    };
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/register" | "/login" | "/logout" | "/timeline" | "/settings" | "/tweets";
+    page: "/" | "/register" | "/login" | "/logout" | "/timeline" | "/settings" | "/tweets" | "/api/*";
   };
   "routes/_index.tsx": {
     id: "routes/_index";
@@ -69,5 +74,9 @@ type RouteFiles = {
   "routes/tweets.tsx": {
     id: "routes/tweets";
     page: "/tweets";
+  };
+  "routes/api/$.tsx": {
+    id: "routes/api/$";
+    page: "/api/*";
   };
 };
