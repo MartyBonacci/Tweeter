@@ -3,7 +3,7 @@ import { relations } from 'drizzle-orm';
 import { users } from './users';
 import { tweets } from './tweets';
 
-export const likes = pgTable('tweeter_likes', {
+export const likes = pgTable('likes', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   tweetId: uuid('tweet_id').notNull().references(() => tweets.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),

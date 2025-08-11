@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { db } from '../connection';
 import { users, tweets, follows, likes } from '../schema';
 import { hashPassword } from '../../auth/password';
@@ -50,9 +51,9 @@ async function seedUsers() {
       id: uuidv7(),
       username: userData.username,
       email: userData.email,
-      name: userData.name,
+      displayName: userData.name,
       bio: userData.bio,
-      password: await hashPassword('password123'),
+      passwordHash: await hashPassword('password123'),
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();
@@ -91,9 +92,8 @@ async function seedFollows(createdUsers: any[]) {
     const followee = createdUsers[(i + 1) % createdUsers.length];
     
     await db.insert(follows).values({
-      id: uuidv7(),
       followerId: follower.id,
-      followeeId: followee.id,
+      followingId: followee.id,
       createdAt: new Date(),
     });
   }
@@ -101,7 +101,7 @@ async function seedFollows(createdUsers: any[]) {
   console.log('Created follow relationships');
 }
 
-async function seedLikes(createdUsers: any[], tweets: any[]) {
+async function seedLikes(createdUsers: any[]) {
   console.log('Seeding likes...');
   
   // Get all tweets
@@ -113,7 +113,6 @@ async function seedLikes(createdUsers: any[], tweets: any[]) {
     const user = createdUsers[i % createdUsers.length];
     
     await db.insert(likes).values({
-      id: uuidv7(),
       userId: user.id,
       tweetId: tweet.id,
       createdAt: new Date(),
@@ -137,7 +136,7 @@ export async function seedDatabase() {
     const createdUsers = await seedUsers();
     await seedTweets(createdUsers);
     await seedFollows(createdUsers);
-    await seedLikes(createdUsers, []);
+    await seedLikes(createdUsers);
     
     console.log('Database seeding completed successfully!');
   } catch (error) {
@@ -147,8 +146,6 @@ export async function seedDatabase() {
 }
 
 // Run seeding if this file is executed directly
-if (require.main === module) {
-  seedDatabase()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
-}
+seedDatabase()
+  .then(() => process.exit(0))
+  .catch(() => process.exit(1));

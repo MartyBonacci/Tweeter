@@ -4,7 +4,7 @@ import { tweets } from './tweets';
 import { follows } from './follows';
 import { likes } from './likes';
 
-export const users = pgTable('tweeter_users', {
+export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   username: varchar('username', { length: 50 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
