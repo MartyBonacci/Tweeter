@@ -67,6 +67,7 @@ export default function LoginForm() {
 
           <Button
             type="submit"
+            color="blue"
             className="w-full mt-6"
             disabled={isSubmitting}
             isProcessing={isSubmitting}

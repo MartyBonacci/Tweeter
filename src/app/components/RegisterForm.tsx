@@ -132,6 +132,7 @@ export default function RegisterForm() {
 
           <Button
             type="submit"
+            color="blue"
             className="w-full mt-6"
             disabled={isSubmitting || (confirmPassword.length > 0 && !passwordsMatch)}
             isProcessing={isSubmitting}
